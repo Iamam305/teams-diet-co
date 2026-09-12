@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1789223453939,
+      "tag": "0000_zippy_blockbuster",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1789223658861,
+      "tag": "0001_neat_wolverine",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789225367452,
+      "tag": "0002_cooing_randall",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1789233307826,
+      "tag": "0003_silent_medusa",
+      "breakpoints": true
+    }
+  ]
+}
