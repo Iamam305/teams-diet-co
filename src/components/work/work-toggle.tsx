@@ -14,7 +14,7 @@ export function WorkToggle() {
   return (
     <div className="flex items-center gap-2">
       {elapsed ? (
-        <span className="hidden text-xs text-muted-foreground sm:inline">
+        <span className="text-[11px] text-muted-foreground tabular-nums sm:text-xs">
           {elapsed}
         </span>
       ) : null}

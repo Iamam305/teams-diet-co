@@ -171,7 +171,7 @@ describe("forced password-change gate", () => {
     ).toBe("/invite/inv_1");
   });
 
-  it("sends members with an org to the dashboard", () => {
+  it("sends members with an org to the dashboard by default", () => {
     expect(
       postAuthDestination({
         emailVerified: true,
@@ -179,5 +179,16 @@ describe("forced password-change gate", () => {
         hasOrganization: true,
       }),
     ).toBe("/dashboard");
+  });
+
+  it("uses a role-specific home path after the org gate", () => {
+    expect(
+      postAuthDestination({
+        emailVerified: true,
+        mustChangePassword: false,
+        hasOrganization: true,
+        homePath: "/diet-charts",
+      }),
+    ).toBe("/diet-charts");
   });
 });

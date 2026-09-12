@@ -106,64 +106,57 @@ export function MembersManager({
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Member</TableHead>
-          <TableHead>Role</TableHead>
-          <TableHead>Teams</TableHead>
-          {canManage ? <TableHead>Actions</TableHead> : null}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+    <div className="space-y-3">
+      <ul className="space-y-3 md:hidden">
         {members.map((member) => (
-          <TableRow key={member.id}>
-            <TableCell>
-              <div>
-                <p className="font-medium">{member.user.name ?? "User"}</p>
-                <p className="text-xs text-muted-foreground">
-                  {member.user.email}
-                </p>
-              </div>
-            </TableCell>
-            <TableCell>
-              {canManage && member.userId !== actorUserId ? (
-                <Select
-                  value={member.role.split(",")[0]}
-                  onValueChange={(value) => {
-                    if (typeof value === "string") {
-                      updateRole(member.id, value as OrgRole);
-                    }
-                  }}
-                  disabled={pending}
-                >
-                  <SelectTrigger>
-                    <SelectValue>
-                      {ORG_ROLE_LABELS[member.role.split(",")[0] as OrgRole] ??
-                        getPrimaryRoleLabel(member.role)}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.entries(ORG_ROLE_LABELS) as [OrgRole, string][])
-                      .filter(
-                        ([role]) => isMainAdmin(actorRole) || role !== "owner",
-                      )
-                      .map(([role, label]) => (
-                        <SelectItem key={role} value={role}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Badge variant="secondary">
-                  {getPrimaryRoleLabel(member.role)}
-                </Badge>
-              )}
-            </TableCell>
-            <TableCell>{teamsForUser(member.userId) || "-"}</TableCell>
+          <li
+            key={member.id}
+            className="space-y-3 rounded-xl border bg-card p-4 shadow-sm"
+          >
+            <div>
+              <p className="font-medium">{member.user.name ?? "User"}</p>
+              <p className="text-xs text-muted-foreground">
+                {member.user.email}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {teamsForUser(member.userId) || "No team"}
+              </p>
+            </div>
+            {canManage && member.userId !== actorUserId ? (
+              <Select
+                value={member.role.split(",")[0]}
+                onValueChange={(value) => {
+                  if (typeof value === "string") {
+                    updateRole(member.id, value as OrgRole);
+                  }
+                }}
+                disabled={pending}
+              >
+                <SelectTrigger>
+                  <SelectValue>
+                    {ORG_ROLE_LABELS[member.role.split(",")[0] as OrgRole] ??
+                      getPrimaryRoleLabel(member.role)}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.entries(ORG_ROLE_LABELS) as [OrgRole, string][])
+                    .filter(
+                      ([role]) => isMainAdmin(actorRole) || role !== "owner",
+                    )
+                    .map(([role, label]) => (
+                      <SelectItem key={role} value={role}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Badge variant="secondary">
+                {getPrimaryRoleLabel(member.role)}
+              </Badge>
+            )}
             {canManage ? (
-              <TableCell className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Select
                   onValueChange={(value) => {
                     if (typeof value === "string") {
@@ -192,11 +185,111 @@ export function MembersManager({
                     Remove
                   </Button>
                 ) : null}
-              </TableCell>
+              </div>
             ) : null}
-          </TableRow>
+          </li>
         ))}
-      </TableBody>
-    </Table>
+      </ul>
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Member</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Teams</TableHead>
+              {canManage ? <TableHead>Actions</TableHead> : null}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {members.map((member) => (
+              <TableRow key={member.id}>
+                <TableCell>
+                  <div>
+                    <p className="font-medium">{member.user.name ?? "User"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {member.user.email}
+                    </p>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {canManage && member.userId !== actorUserId ? (
+                    <Select
+                      value={member.role.split(",")[0]}
+                      onValueChange={(value) => {
+                        if (typeof value === "string") {
+                          updateRole(member.id, value as OrgRole);
+                        }
+                      }}
+                      disabled={pending}
+                    >
+                      <SelectTrigger>
+                        <SelectValue>
+                          {ORG_ROLE_LABELS[
+                            member.role.split(",")[0] as OrgRole
+                          ] ?? getPrimaryRoleLabel(member.role)}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(
+                          Object.entries(ORG_ROLE_LABELS) as [OrgRole, string][]
+                        )
+                          .filter(
+                            ([role]) =>
+                              isMainAdmin(actorRole) || role !== "owner",
+                          )
+                          .map(([role, label]) => (
+                            <SelectItem key={role} value={role}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Badge variant="secondary">
+                      {getPrimaryRoleLabel(member.role)}
+                    </Badge>
+                  )}
+                </TableCell>
+                <TableCell>{teamsForUser(member.userId) || "-"}</TableCell>
+                {canManage ? (
+                  <TableCell className="space-y-2">
+                    <Select
+                      onValueChange={(value) => {
+                        if (typeof value === "string") {
+                          assignTeam(member.userId, value);
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue>Add to team</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teams.map((team) => (
+                          <SelectItem key={team.id} value={team.id}>
+                            {team.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {member.userId !== actorUserId ? (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        disabled={pending}
+                        onClick={() =>
+                          removeMember(member.user.email ?? member.id)
+                        }
+                      >
+                        Remove
+                      </Button>
+                    ) : null}
+                  </TableCell>
+                ) : null}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   );
 }

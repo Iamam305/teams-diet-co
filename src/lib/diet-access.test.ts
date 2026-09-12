@@ -3,6 +3,7 @@ import {
   canViewDietChart,
   canViewTeamActivity,
   filterVisibleUserIds,
+  homePathForRole,
 } from "@/lib/diet-access";
 
 describe("diet chart access", () => {
@@ -78,6 +79,9 @@ describe("diet chart access", () => {
     expect(canViewTeamActivity("owner")).toBe(true);
     expect(canViewTeamActivity("team-admin")).toBe(true);
     expect(canViewTeamActivity("member")).toBe(false);
+    expect(homePathForRole("owner")).toBe("/dashboard");
+    expect(homePathForRole("team-admin")).toBe("/dashboard");
+    expect(homePathForRole("member")).toBe("/diet-charts");
     expect(
       filterVisibleUserIds({
         role: "member",

@@ -24,7 +24,7 @@ export function proxy(request: NextRequest) {
 
   if (pathname === "/") {
     return NextResponse.redirect(
-      new URL(sessionCookie ? "/dashboard" : "/login", request.url),
+      new URL(sessionCookie ? "/continue" : "/login", request.url),
     );
   }
 

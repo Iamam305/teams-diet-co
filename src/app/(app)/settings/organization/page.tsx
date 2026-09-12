@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/app/page-header";
 import { OrganizationSettingsForm } from "@/components/org/organization-settings-form";
 import { auth } from "@/lib/auth";
+import { homePathForRole } from "@/lib/diet-access";
 import { canAccessSettings } from "@/lib/roles";
 import { requireOrganization } from "@/server/auth";
 
@@ -10,7 +11,7 @@ export default async function OrganizationSettingsPage() {
   const { organization, member } = await requireOrganization();
 
   if (!canAccessSettings(member.role, "organization")) {
-    redirect("/dashboard");
+    redirect(homePathForRole(member.role));
   }
 
   const allowed = await auth.api.hasPermission({
@@ -19,7 +20,7 @@ export default async function OrganizationSettingsPage() {
   });
 
   if (!allowed?.success) {
-    redirect("/dashboard");
+    redirect(homePathForRole(member.role));
   }
 
   return (

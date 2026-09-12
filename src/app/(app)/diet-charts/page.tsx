@@ -27,44 +27,65 @@ export default async function DietChartsPage() {
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-          <table className="w-full text-sm">
-            <thead className="border-b bg-primary text-left text-primary-foreground">
-              <tr>
-                <th className="px-4 py-3 font-medium">Title</th>
-                <th className="px-4 py-3 font-medium">Client</th>
-                <th className="px-4 py-3 font-medium">Created by</th>
-                <th className="px-4 py-3 font-medium">Last edited</th>
-              </tr>
-            </thead>
-            <tbody>
-              {charts.map((chart) => (
-                <tr
-                  key={chart.id}
-                  className="border-b last:border-0 even:bg-muted/40"
+        <>
+          <ul className="space-y-3 md:hidden">
+            {charts.map((chart) => (
+              <li key={chart.id}>
+                <Link
+                  href={`/diet-charts/${chart.id}`}
+                  className="block rounded-xl border bg-card p-4 shadow-sm"
                 >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/diet-charts/${chart.id}`}
-                      className="font-medium hover:text-primary hover:underline"
-                    >
-                      {chart.title}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {chart.clientName || "-"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {chart.createdByName}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {chart.updatedByName} · {formatDateTime(chart.updatedAt)}
-                  </td>
+                  <p className="font-medium">{chart.title}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {chart.clientName || "No client name"}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {chart.createdByName} · {chart.updatedByName} ·{" "}
+                    {formatDateTime(chart.updatedAt)}
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto rounded-xl border bg-card shadow-sm md:block">
+            <table className="w-full text-sm">
+              <thead className="border-b bg-primary text-left text-primary-foreground">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Title</th>
+                  <th className="px-4 py-3 font-medium">Client</th>
+                  <th className="px-4 py-3 font-medium">Created by</th>
+                  <th className="px-4 py-3 font-medium">Last edited</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {charts.map((chart) => (
+                  <tr
+                    key={chart.id}
+                    className="border-b last:border-0 even:bg-muted/40"
+                  >
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/diet-charts/${chart.id}`}
+                        className="font-medium hover:text-primary hover:underline"
+                      >
+                        {chart.title}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {chart.clientName || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {chart.createdByName}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {chart.updatedByName} · {formatDateTime(chart.updatedAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

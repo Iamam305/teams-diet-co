@@ -256,7 +256,7 @@ export function DietChartEditorInner({
             : (event) => event.preventDefault()
         }
       >
-        <div className="sticky top-0 z-20 -mx-4 mb-6 border-b bg-background/90 px-4 py-3 backdrop-blur-md print:hidden md:-mx-8 md:px-8">
+        <div className="-mx-4 mb-6 border-b px-4 py-2 print:hidden md:-mx-8 md:px-8 md:py-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div className="grid flex-1 gap-3 sm:grid-cols-2">
               <Field data-invalid={Boolean(form.formState.errors.title)}>
@@ -315,11 +315,6 @@ export function DietChartEditorInner({
                       ? "Save failed"
                       : "Saved"}
                 </p>
-              ) : null}
-              {mode === "create" ? (
-                <Button type="submit" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? "Creating..." : "Create chart"}
-                </Button>
               ) : null}
               <Button
                 type="button"
@@ -398,6 +393,19 @@ export function DietChartEditorInner({
           ))}
         </div>
 
+        {mode === "create" ? (
+          <div className="mt-6 print:hidden">
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full"
+              disabled={form.formState.isSubmitting}
+            >
+              {form.formState.isSubmitting ? "Creating..." : "Create chart"}
+            </Button>
+          </div>
+        ) : null}
+
         <div className="hidden print:block">
           <DietChartDocument
             title={title}
@@ -419,7 +427,7 @@ export function DietChartEditorInner({
           onOpenChange={setPreviewOpen}
           title="Diet chart preview"
           description="This is how the weekly chart will look when printed or downloaded."
-          className="max-h-[90vh] max-w-4xl overflow-y-auto"
+          className="h-[90dvh] max-h-[90dvh] w-[calc(100%-1rem)] max-w-4xl overflow-y-auto sm:h-auto sm:max-h-[90vh]"
         >
           <DietChartDocument
             title={title}

@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { InvitationsTable } from "@/components/org/invitations-table";
 import { InviteDialog } from "@/components/org/invite-dialog";
 import { auth } from "@/lib/auth";
+import { homePathForRole } from "@/lib/diet-access";
 import { canAccessSettings, isMainAdmin } from "@/lib/roles";
 import { requireOrganization } from "@/server/auth";
 
@@ -11,7 +12,7 @@ export default async function InvitationsSettingsPage() {
   const { organization, member } = await requireOrganization();
 
   if (!canAccessSettings(member.role, "invitations")) {
-    redirect("/dashboard");
+    redirect(homePathForRole(member.role));
   }
 
   const teams = isMainAdmin(member.role)

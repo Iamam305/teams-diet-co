@@ -85,7 +85,7 @@ export function TeamsManager({
   return (
     <div className="space-y-4">
       {canCreate ? (
-        <div className="flex max-w-lg gap-2">
+        <div className="flex max-w-lg flex-col gap-2 sm:flex-row">
           <Input
             placeholder="New team name"
             value={name}
@@ -96,40 +96,71 @@ export function TeamsManager({
           </Button>
         </div>
       ) : null}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead className="w-48">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {teams.map((team) => (
-            <TableRow key={team.id}>
-              <TableCell>{team.name}</TableCell>
-              <TableCell className="space-x-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setEditing(team)}
-                >
-                  Rename
-                </Button>
-                {canCreate ? (
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead className="w-48">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {teams.map((team) => (
+              <TableRow key={team.id}>
+                <TableCell>{team.name}</TableCell>
+                <TableCell className="flex flex-wrap gap-2">
                   <Button
                     size="sm"
-                    variant="destructive"
-                    onClick={() => removeTeam(team.id)}
-                    disabled={pending}
+                    variant="outline"
+                    onClick={() => setEditing(team)}
                   >
-                    Delete
+                    Rename
                   </Button>
-                ) : null}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                  {canCreate ? (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => removeTeam(team.id)}
+                      disabled={pending}
+                    >
+                      Delete
+                    </Button>
+                  ) : null}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <ul className="space-y-3 md:hidden">
+        {teams.map((team) => (
+          <li
+            key={team.id}
+            className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm"
+          >
+            <p className="font-medium">{team.name}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setEditing(team)}
+              >
+                Rename
+              </Button>
+              {canCreate ? (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => removeTeam(team.id)}
+                  disabled={pending}
+                >
+                  Delete
+                </Button>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ul>
       <Dialog
         open={Boolean(editing)}
         onOpenChange={(open) => {

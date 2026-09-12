@@ -110,11 +110,13 @@ export function postAuthDestination({
   mustChangePassword,
   hasOrganization,
   pendingInviteId,
+  homePath = "/dashboard",
 }: {
   emailVerified: boolean;
   mustChangePassword: boolean;
   hasOrganization: boolean;
   pendingInviteId?: string | null;
+  homePath?: string;
 }) {
   if (!emailVerified) {
     return "/verify-email";
@@ -132,5 +134,5 @@ export function postAuthDestination({
     return "/onboarding";
   }
 
-  return "/dashboard";
+  return homePath;
 }

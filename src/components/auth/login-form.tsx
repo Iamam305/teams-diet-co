@@ -52,7 +52,8 @@ export function LoginForm() {
     }
 
     const destination = nextPath.startsWith("/") ? nextPath : "/continue";
-    router.replace(destination === "/dashboard" ? "/continue" : destination);
+    const homePaths = new Set(["/dashboard", "/diet-charts", "/attendance"]);
+    router.replace(homePaths.has(destination) ? "/continue" : destination);
     router.refresh();
   }
 

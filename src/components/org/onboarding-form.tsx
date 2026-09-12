@@ -75,7 +75,7 @@ export function OnboardingForm({
     }
 
     toast.success("Organization created.");
-    router.replace("/dashboard");
+    router.replace("/continue");
     router.refresh();
   }
 
@@ -88,7 +88,7 @@ export function OnboardingForm({
       return;
     }
     toast.success("Invitation accepted.");
-    router.replace("/dashboard");
+    router.replace("/continue");
     router.refresh();
   }
 

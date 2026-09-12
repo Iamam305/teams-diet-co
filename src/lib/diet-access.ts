@@ -49,6 +49,10 @@ export function canViewTeamActivity(role: string | null | undefined) {
   return isMainAdmin(role) || isTeamAdmin(role);
 }
 
+export function homePathForRole(role: string | null | undefined) {
+  return canViewTeamActivity(role) ? "/dashboard" : "/diet-charts";
+}
+
 export function filterVisibleUserIds({
   role,
   userId,

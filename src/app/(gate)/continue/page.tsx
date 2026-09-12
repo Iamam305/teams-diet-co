@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { postAuthDestination } from "@/lib/auth-gates";
+import { homePathForRole } from "@/lib/diet-access";
 import {
   getOrganizations,
+  requireOrganization,
   requireSession,
   userMustChangePassword,
 } from "@/server/auth";
@@ -17,13 +19,27 @@ export default async function ContinuePage() {
         (invitation) => invitation.status === "pending",
       )
     : null;
+  const mustChangePassword = await userMustChangePassword(session.user.id);
+  const hasOrganization = Boolean(organizations?.length);
+  let homePath = "/diet-charts";
+
+  if (
+    session.user.emailVerified &&
+    !mustChangePassword &&
+    hasOrganization &&
+    !pendingInvite
+  ) {
+    const { member } = await requireOrganization();
+    homePath = homePathForRole(member.role);
+  }
 
   redirect(
     postAuthDestination({
       emailVerified: Boolean(session.user.emailVerified),
-      mustChangePassword: await userMustChangePassword(session.user.id),
-      hasOrganization: Boolean(organizations?.length),
+      mustChangePassword,
+      hasOrganization,
       pendingInviteId: pendingInvite?.id,
+      homePath,
     }),
   );
 }

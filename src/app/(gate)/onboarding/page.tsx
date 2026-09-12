@@ -2,7 +2,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { OnboardingForm } from "@/components/org/onboarding-form";
 import { auth } from "@/lib/auth";
-import { requirePasswordReady } from "@/server/auth";
+import { homePathForRole } from "@/lib/diet-access";
+import { requireOrganization, requirePasswordReady } from "@/server/auth";
 import { listCurrentUserInvitations } from "@/server/invitations";
 
 export default async function OnboardingPage() {
@@ -12,7 +13,8 @@ export default async function OnboardingPage() {
   });
 
   if (organizations?.length) {
-    redirect("/dashboard");
+    const { member } = await requireOrganization();
+    redirect(homePathForRole(member.role));
   }
 
   const invitations = (await listCurrentUserInvitations()).filter(

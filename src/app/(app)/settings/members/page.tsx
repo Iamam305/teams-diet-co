@@ -5,6 +5,7 @@ import { MembersManager } from "@/components/org/members-manager";
 import { db } from "@/db";
 import { teamMember } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { homePathForRole } from "@/lib/diet-access";
 import { canAccessSettings, isMainAdmin } from "@/lib/roles";
 import { requireOrganization } from "@/server/auth";
 
@@ -12,7 +13,7 @@ export default async function MembersSettingsPage() {
   const { organization, member, session } = await requireOrganization();
 
   if (!canAccessSettings(member.role, "members")) {
-    redirect("/dashboard");
+    redirect(homePathForRole(member.role));
   }
 
   const teamMemberships = await db.select().from(teamMember);

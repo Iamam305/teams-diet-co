@@ -44,17 +44,8 @@ export function InvitationsTable({
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Email</TableHead>
-          <TableHead>Role</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Expires</TableHead>
-          <TableHead />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+    <div className="space-y-3">
+      <ul className="space-y-3 md:hidden">
         {invitations.map((invitation) => {
           const status = invitationDisplayStatus({
             status: invitation.status,
@@ -62,18 +53,19 @@ export function InvitationsTable({
           });
 
           return (
-            <TableRow key={invitation.id}>
-              <TableCell>{invitation.email}</TableCell>
-              <TableCell>{getPrimaryRoleLabel(invitation.role)}</TableCell>
-              <TableCell>
+            <li
+              key={invitation.id}
+              className="space-y-2 rounded-xl border bg-card p-4 shadow-sm"
+            >
+              <p className="break-all font-medium">{invitation.email}</p>
+              <p className="text-sm text-muted-foreground">
+                {getPrimaryRoleLabel(invitation.role)} · expires{" "}
+                {new Date(invitation.expiresAt).toLocaleDateString()}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={status === "pending" ? "default" : "secondary"}>
                   {status}
                 </Badge>
-              </TableCell>
-              <TableCell>
-                {new Date(invitation.expiresAt).toLocaleDateString()}
-              </TableCell>
-              <TableCell>
                 {invitation.status === "pending" && status === "pending" ? (
                   <Button
                     size="sm"
@@ -84,11 +76,61 @@ export function InvitationsTable({
                     Revoke
                   </Button>
                 ) : null}
-              </TableCell>
-            </TableRow>
+              </div>
+            </li>
           );
         })}
-      </TableBody>
-    </Table>
+      </ul>
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Email</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Expires</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {invitations.map((invitation) => {
+              const status = invitationDisplayStatus({
+                status: invitation.status,
+                expiresAt: invitation.expiresAt,
+              });
+
+              return (
+                <TableRow key={invitation.id}>
+                  <TableCell>{invitation.email}</TableCell>
+                  <TableCell>{getPrimaryRoleLabel(invitation.role)}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={status === "pending" ? "default" : "secondary"}
+                    >
+                      {status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {new Date(invitation.expiresAt).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    {invitation.status === "pending" && status === "pending" ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={pendingId === invitation.id}
+                        onClick={() => cancel(invitation.id)}
+                      >
+                        Revoke
+                      </Button>
+                    ) : null}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   );
 }
