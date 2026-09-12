@@ -1,26 +1,27 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+"use client";
+
 import { PageHeader } from "@/components/app/page-header";
 import { OrganizationSettingsForm } from "@/components/org/organization-settings-form";
-import { auth } from "@/lib/auth";
-import { homePathForRole } from "@/lib/diet-access";
-import { canAccessSettings } from "@/lib/roles";
-import { requireOrganization } from "@/server/auth";
+import { SettingsFormSkeleton } from "@/components/skeletons";
+import {
+  useRequireSettings,
+  useSettingsOrganizationQuery,
+} from "@/hooks/use-queries";
 
-export default async function OrganizationSettingsPage() {
-  const { organization, member } = await requireOrganization();
+export default function OrganizationSettingsPage() {
+  const me = useRequireSettings("organization");
+  const query = useSettingsOrganizationQuery();
 
-  if (!canAccessSettings(member.role, "organization")) {
-    redirect(homePathForRole(member.role));
-  }
-
-  const allowed = await auth.api.hasPermission({
-    headers: await headers(),
-    body: { permissions: { organization: ["update"] } },
-  });
-
-  if (!allowed?.success) {
-    redirect(homePathForRole(member.role));
+  if (me.isPending || query.isPending || !query.data) {
+    return (
+      <div>
+        <PageHeader
+          title="Organization"
+          description="Update the name, logo, and PDF background. Only Main Admins can change these settings."
+        />
+        <SettingsFormSkeleton />
+      </div>
+    );
   }
 
   return (
@@ -30,13 +31,8 @@ export default async function OrganizationSettingsPage() {
         description="Update the name, logo, and PDF background. Only Main Admins can change these settings."
       />
       <OrganizationSettingsForm
-        organization={{
-          id: organization.id,
-          name: organization.name,
-          slug: organization.slug,
-          logo: organization.logo,
-          metadata: organization.metadata,
-        }}
+        key={query.data.organization.id}
+        organization={query.data.organization}
       />
     </div>
   );

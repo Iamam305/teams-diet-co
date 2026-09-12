@@ -45,9 +45,9 @@ export default function VerifyEmailPage() {
           type="button"
           variant="outline"
           onClick={resend}
-          disabled={pending}
+          loading={pending}
         >
-          {pending ? "Sending..." : "Resend verification email"}
+          Resend verification email
         </Button>
         <Link
           href="/login"

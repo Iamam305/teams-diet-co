@@ -1,38 +1,51 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { OnboardingForm } from "@/components/org/onboarding-form";
-import { auth } from "@/lib/auth";
+import { SettingsTableSkeleton } from "@/components/skeletons";
+import { useMeQuery, useMyInvitationsQuery } from "@/hooks/use-queries";
+import { isApiRequestError } from "@/lib/api";
 import { homePathForRole } from "@/lib/diet-access";
-import { requireOrganization, requirePasswordReady } from "@/server/auth";
-import { listCurrentUserInvitations } from "@/server/invitations";
 
-export default async function OnboardingPage() {
-  await requirePasswordReady();
-  const organizations = await auth.api.listOrganizations({
-    headers: await headers(),
-  });
+export default function OnboardingPage() {
+  const router = useRouter();
+  const me = useMeQuery();
+  const query = useMyInvitationsQuery();
 
-  if (organizations?.length) {
-    const { member } = await requireOrganization();
-    redirect(homePathForRole(member.role));
+  useEffect(() => {
+    if (me.data) {
+      router.replace(homePathForRole(me.data.role));
+    }
+  }, [me.data, router]);
+
+  useEffect(() => {
+    if (!query.error || !isApiRequestError(query.error)) {
+      return;
+    }
+
+    if (query.error.code === "UNAUTHENTICATED") {
+      router.replace("/login");
+      return;
+    }
+
+    if (query.error.code === "EMAIL_UNVERIFIED") {
+      router.replace("/verify-email");
+      return;
+    }
+
+    if (query.error.code === "PASSWORD_CHANGE_REQUIRED") {
+      router.replace("/change-password");
+    }
+  }, [query.error, router]);
+
+  if (me.isPending || me.data || query.isPending) {
+    return (
+      <div className="mx-auto w-full max-w-4xl">
+        <SettingsTableSkeleton />
+      </div>
+    );
   }
 
-  const invitations = (await listCurrentUserInvitations()).filter(
-    (invitation) => invitation.status === "pending",
-  );
-
-  return (
-    <OnboardingForm
-      invitations={invitations.map((invitation) => ({
-        id: invitation.id,
-        organizationName:
-          "organizationName" in invitation
-            ? invitation.organizationName
-            : undefined,
-        role: invitation.role,
-        expiresAt: invitation.expiresAt,
-        status: invitation.status,
-      }))}
-    />
-  );
+  return <OnboardingForm invitations={query.data ?? []} />;
 }

@@ -1,18 +1,34 @@
-import { redirect } from "next/navigation";
+"use client";
+
 import { PageHeader } from "@/components/app/page-header";
 import { RosterList } from "@/components/attendance/roster-list";
-import { canViewTeamActivity, homePathForRole } from "@/lib/diet-access";
-import { requireOrganization } from "@/server/auth";
-import { listTeamRoster } from "@/server/work";
+import {
+  PageHeaderSkeleton,
+  QueryError,
+  RosterListSkeleton,
+} from "@/components/skeletons";
+import { useRequireTeamActivity, useRosterQuery } from "@/hooks/use-queries";
 
-export default async function AttendancePage() {
-  const { member } = await requireOrganization();
+export default function AttendancePage() {
+  const me = useRequireTeamActivity();
+  const roster = useRosterQuery();
 
-  if (!canViewTeamActivity(member.role)) {
-    redirect(homePathForRole(member.role));
+  if (me.isPending || roster.isPending || !me.data) {
+    return (
+      <div className="mx-auto max-w-5xl">
+        <PageHeaderSkeleton />
+        <RosterListSkeleton />
+      </div>
+    );
   }
 
-  const people = await listTeamRoster();
+  if (roster.isError) {
+    return (
+      <div className="mx-auto max-w-5xl">
+        <QueryError message="Could not load attendance." />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -20,7 +36,7 @@ export default async function AttendancePage() {
         title="Attendance"
         description="Hours and workdays this week, with a full punch log for each person."
       />
-      <RosterList people={people} mode="attendance" />
+      <RosterList people={roster.data ?? []} mode="attendance" />
     </div>
   );
 }

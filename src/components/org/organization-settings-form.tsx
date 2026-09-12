@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { type RefObject, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -13,6 +12,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { useInvalidateAppQueries } from "@/hooks/use-mutations";
 import { authClient } from "@/lib/auth-client";
 import { getAuthErrorMessage } from "@/lib/auth-errors";
 import { compressImageFile } from "@/lib/compress-image";
@@ -30,7 +30,7 @@ export function OrganizationSettingsForm({
     metadata?: unknown;
   };
 }) {
-  const router = useRouter();
+  const invalidate = useInvalidateAppQueries();
   const branding = parseOrgBranding(organization);
   const [pending, setPending] = useState(false);
   const [logo, setLogo] = useState<string | null>(branding.logo);
@@ -94,7 +94,7 @@ export function OrganizationSettingsForm({
     }
 
     toast.success("Organization updated.");
-    router.refresh();
+    invalidate();
   }
 
   return (
@@ -149,8 +149,8 @@ export function OrganizationSettingsForm({
             }}
           />
         </Field>
-        <Button type="submit" disabled={pending}>
-          {pending ? "Saving..." : "Save changes"}
+        <Button type="submit" loading={pending}>
+          Save changes
         </Button>
       </FieldGroup>
     </form>

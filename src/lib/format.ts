@@ -45,6 +45,47 @@ export function formatDateTime(value: Date | string | number) {
   }).format(date);
 }
 
+export function formatTime(value: Date | string | number) {
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    timeStyle: "short",
+  }).format(date);
+}
+
+export function formatPunchTimes(
+  input: {
+    isWorking: boolean;
+    startedAt: string | null;
+    lastStartedAt: string | null;
+    lastEndedAt: string | null;
+  },
+  options?: { emptyLabel?: string },
+) {
+  if (input.isWorking && input.startedAt) {
+    return { lines: [`In since ${formatDateTime(input.startedAt)}`] };
+  }
+
+  if (input.lastStartedAt && input.lastEndedAt) {
+    return {
+      lines: [
+        `In ${formatDateTime(input.lastStartedAt)}`,
+        `Out ${formatDateTime(input.lastEndedAt)}`,
+      ],
+    };
+  }
+
+  if (input.lastEndedAt) {
+    return { lines: [`Out ${formatDateTime(input.lastEndedAt)}`] };
+  }
+
+  return { lines: [options?.emptyLabel ?? "No sessions yet"] };
+}
+
 export function formatDuration(ms: number) {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
   const hours = Math.floor(totalSeconds / 3600);

@@ -215,7 +215,7 @@ export function DietChartPdfDocument({
                   <Text style={[styles.th, styles.colContent]}>
                     Meal contents
                   </Text>
-                  <Text style={[styles.th, styles.colQr]}>QR</Text>
+                  <Text style={[styles.th, styles.colQr]}>Recipe</Text>
                 </View>
                 {meals.length === 0 ? (
                   <View style={styles.row}>
@@ -251,7 +251,7 @@ export function DietChartPdfDocument({
                             <View style={styles.qrBlock}>
                               <Image src={qr} style={styles.qr} />
                               <Link src={recipeUrl} style={styles.link}>
-                                <Text>link</Text>
+                                <Text>Recipe</Text>
                               </Link>
                             </View>
                           ) : null}

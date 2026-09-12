@@ -87,8 +87,13 @@ export function ResetPasswordForm({ token }: { token?: string }) {
               {form.formState.errors.confirmPassword?.message}
             </FieldError>
           </Field>
-          <Button type="submit" disabled={pending || !token} className="w-full">
-            {pending ? "Updating..." : "Update password"}
+          <Button
+            type="submit"
+            loading={pending}
+            disabled={!token}
+            className="w-full"
+          >
+            Update password
           </Button>
         </FieldGroup>
       </form>

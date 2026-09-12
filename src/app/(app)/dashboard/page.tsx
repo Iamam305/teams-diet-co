@@ -1,31 +1,42 @@
-import { redirect } from "next/navigation";
+"use client";
+
 import { PageHeader } from "@/components/app/page-header";
 import { RosterList } from "@/components/attendance/roster-list";
+import { DashboardSkeleton, QueryError } from "@/components/skeletons";
+import {
+  useActivityQuery,
+  useRequireTeamActivity,
+  useRosterQuery,
+} from "@/hooks/use-queries";
 import { activityTypeLabel } from "@/lib/activity";
-import { canViewTeamActivity, homePathForRole } from "@/lib/diet-access";
 import { formatDateTime } from "@/lib/format";
-import { requireOrganization } from "@/server/auth";
-import { listRecentActivity } from "@/server/queries";
-import { listTeamRoster } from "@/server/work";
 
-export default async function DashboardPage() {
-  const { member, session } = await requireOrganization();
+export default function DashboardPage() {
+  const me = useRequireTeamActivity();
+  const roster = useRosterQuery();
+  const activity = useActivityQuery(8);
 
-  if (!canViewTeamActivity(member.role)) {
-    redirect(homePathForRole(member.role));
+  if (me.isPending || roster.isPending || activity.isPending || !me.data) {
+    return <DashboardSkeleton />;
   }
 
-  const [people, activity] = await Promise.all([
-    listTeamRoster(),
-    listRecentActivity(8),
-  ]);
+  if (roster.isError || activity.isError) {
+    return (
+      <div className="mx-auto max-w-5xl">
+        <QueryError message="Could not load the dashboard." />
+      </div>
+    );
+  }
+
+  const people = roster.data ?? [];
+  const rows = activity.data ?? [];
   const workingCount = people.filter((person) => person.isWorking).length;
 
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
         title="Dashboard"
-        description={`Live work status for your team. ${session.user.name} can see who is punched in right now.`}
+        description={`Live work status for your team. ${me.data.user.name} can see who is punched in right now.`}
       />
 
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
@@ -46,13 +57,13 @@ export default async function DashboardPage() {
         <h2 className="mb-3 font-heading text-lg font-semibold">
           Recent activity
         </h2>
-        {activity.length === 0 ? (
+        {rows.length === 0 ? (
           <p className="rounded-xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
             No recent team activity.
           </p>
         ) : (
           <ul className="divide-y rounded-xl border bg-card shadow-sm">
-            {activity.map((item) => (
+            {rows.map((item) => (
               <li key={item.id} className="px-4 py-3 text-sm">
                 <p className="font-medium">
                   {item.userName} · {activityTypeLabel(item.type)}

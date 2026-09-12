@@ -1,19 +1,39 @@
-import { redirect } from "next/navigation";
+"use client";
+
 import { PageHeader } from "@/components/app/page-header";
 import { ActivityTable } from "@/components/settings/activity-table";
-import { homePathForRole } from "@/lib/diet-access";
-import { canAccessSettings } from "@/lib/roles";
-import { requireOrganization } from "@/server/auth";
-import { listActivityEvents } from "@/server/queries";
+import { SettingsTableSkeleton } from "@/components/skeletons";
+import { useActivityQuery, useRequireSettings } from "@/hooks/use-queries";
 
-export default async function ActivitySettingsPage() {
-  const { member } = await requireOrganization();
+export default function ActivitySettingsPage() {
+  const me = useRequireSettings("activity");
+  const query = useActivityQuery();
 
-  if (!canAccessSettings(member.role, "activity")) {
-    redirect(homePathForRole(member.role));
+  if (me.isPending || query.isPending) {
+    return (
+      <div>
+        <PageHeader
+          title="Activity"
+          description="Login, work, and diet chart activity for people you can manage."
+        />
+        <SettingsTableSkeleton />
+      </div>
+    );
   }
 
-  const rows = await listActivityEvents();
+  if (query.isError) {
+    return (
+      <div>
+        <PageHeader
+          title="Activity"
+          description="Login, work, and diet chart activity for people you can manage."
+        />
+        <p className="text-sm text-muted-foreground">
+          Could not load activity.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -21,7 +41,7 @@ export default async function ActivitySettingsPage() {
         title="Activity"
         description="Login, work, and diet chart activity for people you can manage."
       />
-      <ActivityTable rows={rows} />
+      <ActivityTable rows={query.data ?? []} />
     </div>
   );
 }

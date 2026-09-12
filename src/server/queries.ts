@@ -4,7 +4,7 @@ import { activityEvent, user } from "@/db/schema";
 import { canViewTeamActivity } from "@/lib/diet-access";
 import { isMainAdmin } from "@/lib/roles";
 import { listUserIdsOnTeams } from "@/server/activity";
-import { requireOrganization } from "@/server/auth";
+import { requireApiOrganization } from "@/server/auth";
 import { listTeamIdsForUser } from "@/server/org-hooks";
 
 export type ActivityRow = {
@@ -31,7 +31,7 @@ function parseMetadata(value: string | null) {
 }
 
 export async function listActivityEvents(limit = 100): Promise<ActivityRow[]> {
-  const { session, member, organization } = await requireOrganization();
+  const { session, member, organization } = await requireApiOrganization();
 
   if (!canViewTeamActivity(member.role)) {
     return [];

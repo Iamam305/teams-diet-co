@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useInvalidateAppQueries } from "@/hooks/use-mutations";
 import { authClient } from "@/lib/auth-client";
 import { getAuthErrorMessage } from "@/lib/auth-errors";
 import { isMainAdmin } from "@/lib/roles";
@@ -25,7 +25,7 @@ export function TeamsManager({
   teams: { id: string; name: string }[];
   role: string;
 }) {
-  const router = useRouter();
+  const invalidate = useInvalidateAppQueries();
   const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(
@@ -48,7 +48,7 @@ export function TeamsManager({
     }
     setName("");
     toast.success("Team created.");
-    router.refresh();
+    invalidate();
   }
 
   async function saveTeam() {
@@ -67,7 +67,7 @@ export function TeamsManager({
     }
     setEditing(null);
     toast.success("Team updated.");
-    router.refresh();
+    invalidate();
   }
 
   async function removeTeam(teamId: string) {
@@ -79,7 +79,7 @@ export function TeamsManager({
       return;
     }
     toast.success("Team deleted.");
-    router.refresh();
+    invalidate();
   }
 
   return (
@@ -91,7 +91,7 @@ export function TeamsManager({
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
-          <Button onClick={createTeam} disabled={pending}>
+          <Button onClick={createTeam} loading={pending}>
             Create team
           </Button>
         </div>
@@ -121,7 +121,7 @@ export function TeamsManager({
                       size="sm"
                       variant="destructive"
                       onClick={() => removeTeam(team.id)}
-                      disabled={pending}
+                      loading={pending}
                     >
                       Delete
                     </Button>
@@ -152,7 +152,7 @@ export function TeamsManager({
                   size="sm"
                   variant="destructive"
                   onClick={() => removeTeam(team.id)}
-                  disabled={pending}
+                  loading={pending}
                 >
                   Delete
                 </Button>
@@ -179,7 +179,7 @@ export function TeamsManager({
               )
             }
           />
-          <Button onClick={saveTeam} disabled={pending}>
+          <Button onClick={saveTeam} loading={pending}>
             Save
           </Button>
         </div>

@@ -1,36 +1,38 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+"use client";
+
 import { PageHeader } from "@/components/app/page-header";
 import { TeamsManager } from "@/components/org/teams-manager";
-import { auth } from "@/lib/auth";
-import { homePathForRole } from "@/lib/diet-access";
-import { canAccessSettings, isMainAdmin } from "@/lib/roles";
-import { requireOrganization } from "@/server/auth";
+import { SettingsTableSkeleton } from "@/components/skeletons";
+import { useRequireSettings, useSettingsTeamsQuery } from "@/hooks/use-queries";
+import { isMainAdmin } from "@/lib/roles";
 
-export default async function TeamsSettingsPage() {
-  const { member, organization } = await requireOrganization();
+export default function TeamsSettingsPage() {
+  const me = useRequireSettings("teams");
+  const query = useSettingsTeamsQuery();
 
-  if (!canAccessSettings(member.role, "teams")) {
-    redirect(homePathForRole(member.role));
+  if (me.isPending || query.isPending || !query.data) {
+    return (
+      <div>
+        <PageHeader
+          title="Teams"
+          description="Create, rename, and remove teams in this organization."
+        />
+        <SettingsTableSkeleton />
+      </div>
+    );
   }
-
-  const userTeams = isMainAdmin(member.role)
-    ? (organization.teams ?? [])
-    : ((await auth.api.listUserTeams({
-        headers: await headers(),
-      })) ?? []);
 
   return (
     <div>
       <PageHeader
         title="Teams"
         description={
-          isMainAdmin(member.role)
+          isMainAdmin(query.data.role)
             ? "Create, rename, and remove teams in this organization."
             : "Rename the teams assigned to you."
         }
       />
-      <TeamsManager teams={userTeams} role={member.role} />
+      <TeamsManager teams={query.data.teams} role={query.data.role} />
     </div>
   );
 }

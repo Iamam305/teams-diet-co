@@ -1,5 +1,3 @@
-"use server";
-
 import { and, desc, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 import { db } from "@/db";
@@ -15,7 +13,8 @@ import {
 import { isMainAdmin, isTeamAdmin } from "@/lib/roles";
 import { dietChartMetaSchema } from "@/lib/validations";
 import { listTeamIdsForUsers, recordActivityEvent } from "@/server/activity";
-import { requireOrganization } from "@/server/auth";
+import { ApiError } from "@/server/api-error";
+import { requireApiOrganization } from "@/server/auth";
 import { listTeamIdsForUser } from "@/server/org-hooks";
 
 const createdByUser = alias(user, "created_by_user");
@@ -58,17 +57,13 @@ function emptyToNull(value?: string | null) {
 }
 
 async function getChartAccessContext() {
-  const context = await requireOrganization();
+  const context = await requireApiOrganization();
   const memberTeamIds = await listTeamIdsForUser(
     context.session.user.id,
     context.organization.id,
   );
 
   return { ...context, memberTeamIds };
-}
-
-function actionError(message: string) {
-  return { ok: false as const, error: message };
 }
 
 export async function listDietCharts(): Promise<DietChartListItem[]> {
@@ -200,57 +195,51 @@ export async function createDietChartAction(input: {
   endDate?: string;
   days: DietDays;
 }) {
-  try {
-    const { session, organization, memberTeamIds } =
-      await getChartAccessContext();
-    const now = new Date();
-    const id = createId();
-    const meta = dietChartMetaSchema.parse({
-      title: input.title.trim(),
-      clientName: input.clientName?.trim() || undefined,
-      notes: input.notes?.trim() || undefined,
-      startDate: input.startDate?.trim() || undefined,
-      endDate: input.endDate?.trim() || undefined,
-    });
-    const days = dietDaysSchema.parse(input.days);
-    const activeTeamId = (session.session as { activeTeamId?: string | null })
-      .activeTeamId;
-    const teamId =
-      activeTeamId && memberTeamIds.includes(activeTeamId)
-        ? activeTeamId
-        : (memberTeamIds[0] ?? null);
+  const { session, organization, memberTeamIds } =
+    await getChartAccessContext();
+  const now = new Date();
+  const id = createId();
+  const meta = dietChartMetaSchema.parse({
+    title: input.title.trim(),
+    clientName: input.clientName?.trim() || undefined,
+    notes: input.notes?.trim() || undefined,
+    startDate: input.startDate?.trim() || undefined,
+    endDate: input.endDate?.trim() || undefined,
+  });
+  const days = dietDaysSchema.parse(input.days);
+  const activeTeamId = (session.session as { activeTeamId?: string | null })
+    .activeTeamId;
+  const teamId =
+    activeTeamId && memberTeamIds.includes(activeTeamId)
+      ? activeTeamId
+      : (memberTeamIds[0] ?? null);
 
-    await db.insert(dietChart).values({
-      id,
-      organizationId: organization.id,
-      teamId,
-      title: meta.title,
-      clientName: meta.clientName ?? null,
-      notes: meta.notes ?? null,
-      startDate: emptyToNull(meta.startDate),
-      endDate: emptyToNull(meta.endDate),
-      daysJson: stringifyDays(days),
-      createdByUserId: session.user.id,
-      updatedByUserId: session.user.id,
-      createdAt: now,
-      updatedAt: now,
-    });
+  await db.insert(dietChart).values({
+    id,
+    organizationId: organization.id,
+    teamId,
+    title: meta.title,
+    clientName: meta.clientName ?? null,
+    notes: meta.notes ?? null,
+    startDate: emptyToNull(meta.startDate),
+    endDate: emptyToNull(meta.endDate),
+    daysJson: stringifyDays(days),
+    createdByUserId: session.user.id,
+    updatedByUserId: session.user.id,
+    createdAt: now,
+    updatedAt: now,
+  });
 
-    await recordActivityEvent({
-      organizationId: organization.id,
-      userId: session.user.id,
-      type: "chart_create",
-      entityType: "diet_chart",
-      entityId: id,
-      metadata: { title: meta.title },
-    });
+  await recordActivityEvent({
+    organizationId: organization.id,
+    userId: session.user.id,
+    type: "chart_create",
+    entityType: "diet_chart",
+    entityId: id,
+    metadata: { title: meta.title },
+  });
 
-    return { ok: true as const, id };
-  } catch (error) {
-    return actionError(
-      error instanceof Error ? error.message : "Could not create diet chart.",
-    );
-  }
+  return { id };
 }
 
 export async function updateDietChartAction(input: {
@@ -262,53 +251,47 @@ export async function updateDietChartAction(input: {
   endDate?: string;
   days: DietDays;
 }) {
-  try {
-    const chart = await getDietChart(input.id);
+  const chart = await getDietChart(input.id);
 
-    if (!chart) {
-      return actionError("Diet chart not found.");
-    }
-
-    const meta = dietChartMetaSchema.parse({
-      title: input.title.trim(),
-      clientName: input.clientName?.trim() || undefined,
-      notes: input.notes?.trim() || undefined,
-      startDate: input.startDate?.trim() || undefined,
-      endDate: input.endDate?.trim() || undefined,
-    });
-    const days = dietDaysSchema.parse(input.days);
-    const { session, organization } = await requireOrganization();
-    const now = new Date();
-
-    await db
-      .update(dietChart)
-      .set({
-        title: meta.title,
-        clientName: meta.clientName ?? null,
-        notes: meta.notes ?? null,
-        startDate: emptyToNull(meta.startDate),
-        endDate: emptyToNull(meta.endDate),
-        daysJson: stringifyDays(days),
-        updatedByUserId: session.user.id,
-        updatedAt: now,
-      })
-      .where(eq(dietChart.id, input.id));
-
-    await recordActivityEvent({
-      organizationId: organization.id,
-      userId: session.user.id,
-      type: "chart_update",
-      entityType: "diet_chart",
-      entityId: input.id,
-      metadata: { title: meta.title },
-    });
-
-    return { ok: true as const, updatedAt: now.toISOString() };
-  } catch (error) {
-    return actionError(
-      error instanceof Error ? error.message : "Could not save diet chart.",
-    );
+  if (!chart) {
+    throw new ApiError(404, "Diet chart not found.", "NOT_FOUND");
   }
+
+  const meta = dietChartMetaSchema.parse({
+    title: input.title.trim(),
+    clientName: input.clientName?.trim() || undefined,
+    notes: input.notes?.trim() || undefined,
+    startDate: input.startDate?.trim() || undefined,
+    endDate: input.endDate?.trim() || undefined,
+  });
+  const days = dietDaysSchema.parse(input.days);
+  const { session, organization } = await requireApiOrganization();
+  const now = new Date();
+
+  await db
+    .update(dietChart)
+    .set({
+      title: meta.title,
+      clientName: meta.clientName ?? null,
+      notes: meta.notes ?? null,
+      startDate: emptyToNull(meta.startDate),
+      endDate: emptyToNull(meta.endDate),
+      daysJson: stringifyDays(days),
+      updatedByUserId: session.user.id,
+      updatedAt: now,
+    })
+    .where(eq(dietChart.id, input.id));
+
+  await recordActivityEvent({
+    organizationId: organization.id,
+    userId: session.user.id,
+    type: "chart_update",
+    entityType: "diet_chart",
+    entityId: input.id,
+    metadata: { title: meta.title },
+  });
+
+  return { updatedAt: now.toISOString() };
 }
 
 export async function listRecentDietCharts(limit = 6) {

@@ -1,15 +1,21 @@
-import { DietChartEditor } from "@/components/diet/diet-chart-editor";
-import { createDefaultDays } from "@/lib/diet-chart";
-import { parseOrgBranding } from "@/lib/org-branding";
-import { requireOrganization } from "@/server/auth";
+"use client";
 
-export default async function NewDietChartPage() {
-  const { organization, session } = await requireOrganization();
+import { DietChartEditor } from "@/components/diet/diet-chart-editor";
+import { DietChartEditorSkeleton } from "@/components/skeletons";
+import { useMeQuery } from "@/hooks/use-queries";
+import { createDefaultDays } from "@/lib/diet-chart";
+
+export default function NewDietChartPage() {
+  const me = useMeQuery();
+
+  if (me.isPending || !me.data) {
+    return <DietChartEditorSkeleton />;
+  }
 
   return (
     <DietChartEditor
       mode="create"
-      branding={parseOrgBranding(organization)}
+      branding={me.data.branding}
       chart={{
         title: "",
         clientName: null,
@@ -17,8 +23,8 @@ export default async function NewDietChartPage() {
         startDate: null,
         endDate: null,
         days: createDefaultDays(),
-        createdByName: session.user.name,
-        updatedByName: session.user.name,
+        createdByName: me.data.user.name,
+        updatedByName: me.data.user.name,
         updatedAtLabel: "",
       }}
     />

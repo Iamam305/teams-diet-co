@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import type { DietChartEditorChart } from "@/components/diet/diet-chart-editor-inner";
+import { DietChartEditorSkeleton } from "@/components/skeletons";
 import type { OrgBranding } from "@/lib/org-branding";
 
 export type { DietChartEditorChart } from "@/components/diet/diet-chart-editor-inner";
@@ -13,9 +14,7 @@ const DietChartEditorInner = dynamic(
     ),
   {
     ssr: false,
-    loading: () => (
-      <p className="text-sm text-muted-foreground">Loading editor...</p>
-    ),
+    loading: () => <DietChartEditorSkeleton />,
   },
 );
 

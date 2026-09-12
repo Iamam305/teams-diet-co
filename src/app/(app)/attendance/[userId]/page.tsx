@@ -1,40 +1,60 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect } from "react";
 import { PageHeader } from "@/components/app/page-header";
 import { AttendanceDetail } from "@/components/attendance/attendance-detail";
-import { resolveAttendanceRange } from "@/lib/attendance";
-import { canViewTeamActivity, homePathForRole } from "@/lib/diet-access";
-import { requireOrganization } from "@/server/auth";
-import { getMemberAttendance } from "@/server/work";
+import { AttendanceDetailSkeleton } from "@/components/skeletons";
+import {
+  useAttendanceQuery,
+  useRequireTeamActivity,
+} from "@/hooks/use-queries";
+import { isApiRequestError } from "@/lib/api";
 
-export default async function AttendanceMemberPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ userId: string }>;
-  searchParams: Promise<{ from?: string; to?: string }>;
-}) {
-  const { member } = await requireOrganization();
+export default function AttendanceMemberPage() {
+  return (
+    <Suspense fallback={<AttendanceDetailSkeleton />}>
+      <AttendanceMemberPageInner />
+    </Suspense>
+  );
+}
 
-  if (!canViewTeamActivity(member.role)) {
-    redirect(homePathForRole(member.role));
+function AttendanceMemberPageInner() {
+  const params = useParams<{ userId: string }>();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const userId = params.userId;
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
+  const me = useRequireTeamActivity();
+  const attendance = useAttendanceQuery(userId, from, to);
+
+  useEffect(() => {
+    if (!attendance.error || !isApiRequestError(attendance.error)) {
+      return;
+    }
+
+    if (attendance.error.code === "FORBIDDEN") {
+      router.replace("/diet-charts");
+      return;
+    }
+
+    if (attendance.error.code === "NOT_FOUND") {
+      router.replace("/attendance");
+    }
+  }, [attendance.error, router]);
+
+  if (me.isPending || attendance.isPending || !attendance.data) {
+    return <AttendanceDetailSkeleton />;
   }
-
-  const { userId } = await params;
-  const query = await searchParams;
-  const range = resolveAttendanceRange(query.from, query.to);
-  const attendance = await getMemberAttendance({
-    userId,
-    from: range.from,
-    to: range.to,
-  });
 
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
         title="Attendance log"
-        description={`Work sessions from ${range.fromKey} to ${range.toKey}.`}
+        description={`Work sessions from ${attendance.data.fromKey} to ${attendance.data.toKey}.`}
       />
-      <AttendanceDetail attendance={attendance} />
+      <AttendanceDetail attendance={attendance.data} />
     </div>
   );
 }

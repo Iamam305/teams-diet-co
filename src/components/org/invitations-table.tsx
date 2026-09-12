@@ -1,7 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,9 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useCancelInvitationMutation } from "@/hooks/use-mutations";
+import { isApiRequestError } from "@/lib/api";
 import { invitationDisplayStatus } from "@/lib/auth-gates";
 import { getPrimaryRoleLabel } from "@/lib/roles";
-import { cancelInvitationAction } from "@/server/actions";
 
 export function InvitationsTable({
   invitations,
@@ -28,19 +27,19 @@ export function InvitationsTable({
     expiresAt: Date | string;
   }[];
 }) {
-  const router = useRouter();
-  const [pendingId, setPendingId] = useState<string | null>(null);
+  const cancelInvitation = useCancelInvitationMutation();
 
   async function cancel(id: string) {
-    setPendingId(id);
-    const result = await cancelInvitationAction(id);
-    setPendingId(null);
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
+    try {
+      await cancelInvitation.mutateAsync(id);
+      toast.success("Invitation cancelled.");
+    } catch (error) {
+      toast.error(
+        isApiRequestError(error)
+          ? error.message
+          : "Could not cancel invitation.",
+      );
     }
-    toast.success("Invitation cancelled.");
-    router.refresh();
   }
 
   return (
@@ -70,7 +69,10 @@ export function InvitationsTable({
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={pendingId === invitation.id}
+                    loading={
+                      cancelInvitation.isPending &&
+                      cancelInvitation.variables === invitation.id
+                    }
                     onClick={() => cancel(invitation.id)}
                   >
                     Revoke
@@ -118,7 +120,10 @@ export function InvitationsTable({
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={pendingId === invitation.id}
+                        loading={
+                          cancelInvitation.isPending &&
+                          cancelInvitation.variables === invitation.id
+                        }
                         onClick={() => cancel(invitation.id)}
                       >
                         Revoke

@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useInvalidateAppQueries } from "@/hooks/use-mutations";
 import { authClient } from "@/lib/auth-client";
 import { getAuthErrorMessage } from "@/lib/auth-errors";
 import {
@@ -49,7 +49,7 @@ export function MembersManager({
   actorRole: string;
   actorUserId: string;
 }) {
-  const router = useRouter();
+  const invalidate = useInvalidateAppQueries();
   const [pending, setPending] = useState(false);
   const canManage = isMainAdmin(actorRole) || actorRole.includes("team-admin");
 
@@ -73,7 +73,7 @@ export function MembersManager({
       return;
     }
     toast.success("Role updated.");
-    router.refresh();
+    invalidate();
   }
 
   async function removeMember(emailOrId: string) {
@@ -87,7 +87,7 @@ export function MembersManager({
       return;
     }
     toast.success("Member removed.");
-    router.refresh();
+    invalidate();
   }
 
   async function assignTeam(userId: string, teamId: string) {
@@ -102,7 +102,7 @@ export function MembersManager({
       return;
     }
     toast.success("Added to team.");
-    router.refresh();
+    invalidate();
   }
 
   return (
@@ -179,7 +179,7 @@ export function MembersManager({
                   <Button
                     size="sm"
                     variant="destructive"
-                    disabled={pending}
+                    loading={pending}
                     onClick={() => removeMember(member.user.email ?? member.id)}
                   >
                     Remove
@@ -275,7 +275,7 @@ export function MembersManager({
                       <Button
                         size="sm"
                         variant="destructive"
-                        disabled={pending}
+                        loading={pending}
                         onClick={() =>
                           removeMember(member.user.email ?? member.id)
                         }

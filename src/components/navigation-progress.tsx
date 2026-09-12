@@ -27,7 +27,7 @@ export function NavigationProgress() {
     }
 
     const frame = window.requestAnimationFrame(() => {
-      setWidth(80);
+      setWidth(90);
     });
 
     const timeout = window.setTimeout(() => {
@@ -76,7 +76,7 @@ export function NavigationProgress() {
       className="pointer-events-none fixed inset-x-0 top-0 z-100"
     >
       <div
-        className="h-0.5 origin-left bg-primary shadow-[0_0_8px] shadow-primary/80 transition-[width,opacity] duration-300 ease-out"
+        className="h-0.5 origin-left bg-primary shadow-[0_0_8px] shadow-primary/80 transition-[width,opacity] duration-400 ease-out"
         style={{
           width: `${width}%`,
           opacity: state === "finishing" ? 0 : 1,

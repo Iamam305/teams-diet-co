@@ -1,11 +1,16 @@
 import Link from "next/link";
 import { CloseSessionButton } from "@/components/attendance/close-session-button";
 import { WorkStatusBadge } from "@/components/attendance/work-status-badge";
+import type { MemberAttendance } from "@/lib/api-types";
 import { attendanceRangePresets } from "@/lib/attendance";
-import { formatDateTime, formatDuration, formatIsoDate } from "@/lib/format";
+import {
+  formatDateTime,
+  formatDuration,
+  formatIsoDate,
+  formatPunchTimes,
+} from "@/lib/format";
 import { getPrimaryRoleLabel } from "@/lib/roles";
 import { cn } from "@/lib/utils";
-import type { MemberAttendance } from "@/server/work";
 
 export function AttendanceDetail({
   attendance,
@@ -46,13 +51,13 @@ export function AttendanceDetail({
             ) : null}
           </div>
         </div>
-        <p className="mt-3 text-sm text-muted-foreground">
-          {person.isWorking && person.startedAt
-            ? `In since ${formatDateTime(person.startedAt)}`
-            : person.lastEndedAt
-              ? `Last out ${formatDateTime(person.lastEndedAt)}`
-              : "No work sessions recorded yet."}
-        </p>
+        <div className="mt-3 flex flex-col gap-0.5 text-sm text-muted-foreground">
+          {formatPunchTimes(person, {
+            emptyLabel: "No work sessions recorded yet.",
+          }).lines.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        </div>
       </section>
 
       <div className="flex flex-wrap gap-2">
@@ -63,7 +68,7 @@ export function AttendanceDetail({
               key={item.label}
               href={`/attendance/${person.userId}?from=${item.fromKey}&to=${item.toKey}`}
               className={cn(
-                "rounded-lg border px-3 py-1.5 text-sm",
+                "rounded-lg border px-3 py-1.5 text-sm transition-colors duration-200",
                 active
                   ? "border-primary bg-primary text-primary-foreground"
                   : "bg-card hover:bg-muted",

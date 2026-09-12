@@ -1,34 +1,43 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+"use client";
+
 import { PageHeader } from "@/components/app/page-header";
 import { InvitationsTable } from "@/components/org/invitations-table";
 import { InviteDialog } from "@/components/org/invite-dialog";
-import { auth } from "@/lib/auth";
-import { homePathForRole } from "@/lib/diet-access";
-import { canAccessSettings, isMainAdmin } from "@/lib/roles";
-import { requireOrganization } from "@/server/auth";
+import { SettingsTableSkeleton } from "@/components/skeletons";
+import {
+  useRequireSettings,
+  useSettingsInvitationsQuery,
+} from "@/hooks/use-queries";
 
-export default async function InvitationsSettingsPage() {
-  const { organization, member } = await requireOrganization();
+export default function InvitationsSettingsPage() {
+  const me = useRequireSettings("invitations");
+  const query = useSettingsInvitationsQuery();
 
-  if (!canAccessSettings(member.role, "invitations")) {
-    redirect(homePathForRole(member.role));
+  if (me.isPending || query.isPending || !query.data) {
+    return (
+      <div>
+        <PageHeader
+          title="Invitations"
+          description="Invite people with a role and team. New accounts get a temporary password."
+        />
+        <SettingsTableSkeleton />
+      </div>
+    );
   }
-
-  const teams = isMainAdmin(member.role)
-    ? (organization.teams ?? [])
-    : ((await auth.api.listUserTeams({
-        headers: await headers(),
-      })) ?? []);
 
   return (
     <div>
       <PageHeader
         title="Invitations"
         description="Invite people with a role and team. New accounts get a temporary password."
-        actions={<InviteDialog teams={teams} actorRole={member.role} />}
+        actions={
+          <InviteDialog
+            teams={query.data.teams}
+            actorRole={query.data.actorRole}
+          />
+        }
       />
-      <InvitationsTable invitations={organization.invitations ?? []} />
+      <InvitationsTable invitations={query.data.invitations} />
     </div>
   );
 }

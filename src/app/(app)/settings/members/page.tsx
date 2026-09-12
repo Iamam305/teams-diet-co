@@ -1,37 +1,28 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+"use client";
+
 import { PageHeader } from "@/components/app/page-header";
 import { MembersManager } from "@/components/org/members-manager";
-import { db } from "@/db";
-import { teamMember } from "@/db/schema";
-import { auth } from "@/lib/auth";
-import { homePathForRole } from "@/lib/diet-access";
-import { canAccessSettings, isMainAdmin } from "@/lib/roles";
-import { requireOrganization } from "@/server/auth";
+import { SettingsTableSkeleton } from "@/components/skeletons";
+import {
+  useRequireSettings,
+  useSettingsMembersQuery,
+} from "@/hooks/use-queries";
 
-export default async function MembersSettingsPage() {
-  const { organization, member, session } = await requireOrganization();
+export default function MembersSettingsPage() {
+  const me = useRequireSettings("members");
+  const query = useSettingsMembersQuery();
 
-  if (!canAccessSettings(member.role, "members")) {
-    redirect(homePathForRole(member.role));
+  if (me.isPending || query.isPending || !query.data) {
+    return (
+      <div>
+        <PageHeader
+          title="Members"
+          description="Manage roles and team assignments."
+        />
+        <SettingsTableSkeleton />
+      </div>
+    );
   }
-
-  const teamMemberships = await db.select().from(teamMember);
-  const userTeams = isMainAdmin(member.role)
-    ? (organization.teams ?? [])
-    : ((await auth.api.listUserTeams({
-        headers: await headers(),
-      })) ?? []);
-  const visibleTeamIds = new Set(userTeams.map((team) => team.id));
-  const visibleMembers = isMainAdmin(member.role)
-    ? organization.members
-    : organization.members.filter((item) =>
-        teamMemberships.some(
-          (membership) =>
-            membership.userId === item.userId &&
-            visibleTeamIds.has(membership.teamId),
-        ),
-      );
 
   return (
     <div>
@@ -40,21 +31,11 @@ export default async function MembersSettingsPage() {
         description="Manage roles and team assignments."
       />
       <MembersManager
-        actorRole={member.role}
-        actorUserId={session.user.id}
-        members={visibleMembers.map((item) => ({
-          id: item.id,
-          userId: item.userId,
-          role: item.role,
-          user: {
-            name: item.user?.name,
-            email: item.user?.email,
-          },
-        }))}
-        teams={userTeams}
-        teamMembers={teamMemberships.filter((item) =>
-          visibleTeamIds.has(item.teamId),
-        )}
+        actorRole={query.data.actorRole}
+        actorUserId={query.data.actorUserId}
+        members={query.data.members}
+        teams={query.data.teams}
+        teamMembers={query.data.teamMembers}
       />
     </div>
   );

@@ -1,7 +1,4 @@
-"use server";
-
 import { and, desc, eq, gte, inArray, isNull, lt, or } from "drizzle-orm";
-import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { team, teamMember, user, workSession } from "@/db/schema";
 import {
@@ -13,16 +10,13 @@ import {
   startOfUtcWeek,
   utcDateKey,
 } from "@/lib/attendance";
-import { canViewTeamActivity, homePathForRole } from "@/lib/diet-access";
+import { canViewTeamActivity } from "@/lib/diet-access";
 import { createId } from "@/lib/diet-chart";
 import { isMainAdmin } from "@/lib/roles";
 import { listUserIdsOnTeams, recordActivityEvent } from "@/server/activity";
-import { requireOrganization } from "@/server/auth";
+import { ApiError } from "@/server/api-error";
+import { requireApiOrganization } from "@/server/auth";
 import { listTeamIdsForUser } from "@/server/org-hooks";
-
-function actionError(message: string) {
-  return { ok: false as const, error: message };
-}
 
 export type TeamRosterPerson = {
   userId: string;
@@ -32,6 +26,7 @@ export type TeamRosterPerson = {
   teamNames: string[];
   isWorking: boolean;
   startedAt: string | null;
+  lastStartedAt: string | null;
   lastEndedAt: string | null;
   hoursTodayMs: number;
   hoursThisWeekMs: number;
@@ -56,7 +51,7 @@ type VisiblePerson = {
 };
 
 async function getVisiblePeople() {
-  const { session, member, organization } = await requireOrganization();
+  const { session, member, organization } = await requireApiOrganization();
 
   if (!canViewTeamActivity(member.role)) {
     return {
@@ -163,13 +158,16 @@ function toRosterPerson(
     (session) => session.userId === person.userId,
   );
   const open = userSessions.find((session) => !session.endedAt) ?? null;
-  const lastEnded = userSessions.reduce<Date | null>((latest, session) => {
+  const lastClosed = userSessions.reduce<{
+    startedAt: Date;
+    endedAt: Date;
+  } | null>((latest, session) => {
     if (!session.endedAt) {
       return latest;
     }
 
-    if (!latest || session.endedAt.getTime() > latest.getTime()) {
-      return session.endedAt;
+    if (!latest || session.endedAt.getTime() > latest.endedAt.getTime()) {
+      return { startedAt: session.startedAt, endedAt: session.endedAt };
     }
 
     return latest;
@@ -192,7 +190,8 @@ function toRosterPerson(
     teamNames: person.teamNames,
     isWorking: Boolean(open),
     startedAt: open?.startedAt.toISOString() ?? null,
-    lastEndedAt: lastEnded ? lastEnded.toISOString() : null,
+    lastStartedAt: lastClosed?.startedAt.toISOString() ?? null,
+    lastEndedAt: lastClosed?.endedAt.toISOString() ?? null,
     hoursTodayMs: hoursInRangeMs(userSessions, todayStart, todayEnd, now),
     hoursThisWeekMs: hoursInRangeMs(userSessions, weekStart, todayEnd, now),
     daysWithWorkThisWeek: weekLog.daysWithWork,
@@ -202,7 +201,7 @@ function toRosterPerson(
 }
 
 export async function getActiveWorkSession(userId?: string) {
-  const { session, organization } = await requireOrganization();
+  const { session, organization } = await requireApiOrganization();
   const [row] = await db
     .select()
     .from(workSession)
@@ -219,38 +218,29 @@ export async function getActiveWorkSession(userId?: string) {
 }
 
 export async function startWorkAction() {
-  try {
-    const { session, organization } = await requireOrganization();
-    const existing = await getActiveWorkSession(session.user.id);
+  const { session, organization } = await requireApiOrganization();
+  const existing = await getActiveWorkSession(session.user.id);
 
-    if (existing) {
-      return {
-        ok: true as const,
-        startedAt: existing.startedAt.toISOString(),
-      };
-    }
-
-    const now = new Date();
-    await db.insert(workSession).values({
-      id: createId(),
-      organizationId: organization.id,
-      userId: session.user.id,
-      startedAt: now,
-      endedAt: null,
-    });
-
-    await recordActivityEvent({
-      organizationId: organization.id,
-      userId: session.user.id,
-      type: "work_start",
-    });
-
-    return { ok: true as const, startedAt: now.toISOString() };
-  } catch (error) {
-    return actionError(
-      error instanceof Error ? error.message : "Could not start work.",
-    );
+  if (existing) {
+    return { startedAt: existing.startedAt.toISOString() };
   }
+
+  const now = new Date();
+  await db.insert(workSession).values({
+    id: createId(),
+    organizationId: organization.id,
+    userId: session.user.id,
+    startedAt: now,
+    endedAt: null,
+  });
+
+  await recordActivityEvent({
+    organizationId: organization.id,
+    userId: session.user.id,
+    type: "work_start",
+  });
+
+  return { startedAt: now.toISOString() };
 }
 
 async function endOpenWorkSession({
@@ -295,22 +285,16 @@ async function endOpenWorkSession({
 }
 
 export async function endWorkAction() {
-  try {
-    const { session, organization } = await requireOrganization();
-    await endOpenWorkSession({
-      organizationId: organization.id,
-      userId: session.user.id,
-    });
-    return { ok: true as const };
-  } catch (error) {
-    return actionError(
-      error instanceof Error ? error.message : "Could not end work.",
-    );
-  }
+  const { session, organization } = await requireApiOrganization();
+  await endOpenWorkSession({
+    organizationId: organization.id,
+    userId: session.user.id,
+  });
+  return { ok: true as const };
 }
 
 export async function listWorkingUsers() {
-  const { session, member, organization } = await requireOrganization();
+  const { session, member, organization } = await requireApiOrganization();
 
   if (!canViewTeamActivity(member.role)) {
     return [];
@@ -384,13 +368,17 @@ export async function getMemberAttendance({
   const visible = await getVisiblePeople();
 
   if (!visible.allowed) {
-    redirect(homePathForRole(visible.member.role));
+    throw new ApiError(
+      403,
+      "You do not have permission to do that.",
+      "FORBIDDEN",
+    );
   }
 
   const person = visible.people.find((item) => item.userId === userId);
 
   if (!person) {
-    redirect("/attendance");
+    throw new ApiError(404, "Member not found.", "NOT_FOUND");
   }
 
   const now = new Date();
@@ -424,38 +412,32 @@ export async function getMemberAttendance({
 }
 
 export async function closeWorkSessionAction(userId: string) {
-  try {
-    const visible = await getVisiblePeople();
+  const visible = await getVisiblePeople();
 
-    if (!visible.allowed) {
-      return actionError("You do not have permission to do that.");
-    }
-
-    if (!visible.people.some((person) => person.userId === userId)) {
-      return actionError("You cannot manage that team member.");
-    }
-
-    const closed = await endOpenWorkSession({
-      organizationId: visible.organization.id,
-      userId,
-      closedByUserId: visible.session.user.id,
-    });
-
-    if (!closed) {
-      return { ok: true as const };
-    }
-
-    return { ok: true as const };
-  } catch (error) {
-    return actionError(
-      error instanceof Error ? error.message : "Could not close the session.",
+  if (!visible.allowed) {
+    throw new ApiError(
+      403,
+      "You do not have permission to do that.",
+      "FORBIDDEN",
     );
   }
+
+  if (!visible.people.some((person) => person.userId === userId)) {
+    throw new ApiError(403, "You cannot manage that team member.", "FORBIDDEN");
+  }
+
+  await endOpenWorkSession({
+    organizationId: visible.organization.id,
+    userId,
+    closedByUserId: visible.session.user.id,
+  });
+
+  return { ok: true as const };
 }
 
 export async function recordLogoutAction() {
   try {
-    const { session, organization } = await requireOrganization();
+    const { session, organization } = await requireApiOrganization();
     await endOpenWorkSession({
       organizationId: organization.id,
       userId: session.user.id,
@@ -465,8 +447,9 @@ export async function recordLogoutAction() {
       userId: session.user.id,
       type: "logout",
     });
-    return { ok: true as const };
   } catch {
-    return { ok: true as const };
+    // Sign-out should continue even if the work session cannot close.
   }
+
+  return { ok: true as const };
 }

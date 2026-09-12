@@ -12,6 +12,11 @@ import { Dialog } from "@/components/ui/dialog";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
+  useCreateDietChartMutation,
+  useUpdateDietChartMutation,
+} from "@/hooks/use-mutations";
+import { isApiRequestError } from "@/lib/api";
+import {
   cloneDay,
   type DietDay,
   type DietDays,
@@ -28,10 +33,6 @@ import {
   type DietChartFormValues,
   dietChartFormSchema,
 } from "@/lib/validations";
-import {
-  createDietChartAction,
-  updateDietChartAction,
-} from "@/server/diet-charts";
 
 const CLIPBOARD_KEY = "team-diet-co-day-clipboard";
 
@@ -81,6 +82,9 @@ export function DietChartEditorInner({
   mode?: "create" | "edit";
 }) {
   const router = useRouter();
+  const createChart = useCreateDietChartMutation();
+  const updateChart = useUpdateDietChartMutation();
+  const saveChart = updateChart.mutateAsync;
   const form = useForm<DietChartFormValues>({
     resolver: zodResolver(dietChartFormSchema),
     shouldUnregister: false,
@@ -158,16 +162,20 @@ export function DietChartEditorInner({
     });
 
     saveTimer.current = window.setTimeout(async () => {
-      const result = await updateDietChartAction({
-        id: chartId,
-        ...payload,
-      });
-      if (!result.ok) {
+      try {
+        await saveChart({
+          id: chartId,
+          ...payload,
+        });
+        setSaveState("saved");
+      } catch (error) {
         setSaveState("error");
-        toast.error(result.error);
-        return;
+        toast.error(
+          isApiRequestError(error)
+            ? error.message
+            : "Could not save diet chart.",
+        );
       }
-      setSaveState("saved");
     }, 700);
 
     return () => {
@@ -175,7 +183,17 @@ export function DietChartEditorInner({
         window.clearTimeout(saveTimer.current);
       }
     };
-  }, [chart.id, clientName, days, endDate, mode, notes, startDate, title]);
+  }, [
+    chart.id,
+    clientName,
+    days,
+    endDate,
+    mode,
+    notes,
+    saveChart,
+    startDate,
+    title,
+  ]);
 
   function copyDay(weekday: Weekday) {
     const cloned = cloneDay(form.getValues(`days.${weekday}`));
@@ -196,14 +214,17 @@ export function DietChartEditorInner({
   }
 
   async function onCreate(values: DietChartFormValues) {
-    const result = await createDietChartAction(toSavePayload(values));
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
+    try {
+      const result = await createChart.mutateAsync(toSavePayload(values));
+      toast.success("Diet chart created.");
+      router.push(`/diet-charts/${result.id}`);
+    } catch (error) {
+      toast.error(
+        isApiRequestError(error)
+          ? error.message
+          : "Could not create diet chart.",
+      );
     }
-    toast.success("Diet chart created.");
-    router.push(`/diet-charts/${result.id}`);
-    router.refresh();
   }
 
   async function downloadPdf() {
@@ -323,8 +344,8 @@ export function DietChartEditorInner({
               >
                 Preview
               </Button>
-              <Button type="button" onClick={downloadPdf} disabled={pdfPending}>
-                {pdfPending ? "Preparing..." : "Download PDF"}
+              <Button type="button" onClick={downloadPdf} loading={pdfPending}>
+                Download PDF
               </Button>
             </div>
           </div>
@@ -399,9 +420,9 @@ export function DietChartEditorInner({
               type="submit"
               size="lg"
               className="w-full"
-              disabled={form.formState.isSubmitting}
+              loading={form.formState.isSubmitting || createChart.isPending}
             >
-              {form.formState.isSubmitting ? "Creating..." : "Create chart"}
+              Create chart
             </Button>
           </div>
         ) : null}

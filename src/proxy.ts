@@ -14,7 +14,7 @@ function isPublicPath(pathname: string) {
     authPaths.has(pathname) ||
     pathname.startsWith("/invite/") ||
     pathname.startsWith("/verify-email") ||
-    pathname.startsWith("/api/auth")
+    pathname.startsWith("/api/")
   );
 }
 

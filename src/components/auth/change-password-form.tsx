@@ -56,7 +56,6 @@ export function ChangePasswordForm({
       await authClient.getSession({ query: { disableCookieCache: true } });
       router.replace("/continue");
     }
-    router.refresh();
   }
 
   const formBody = (
@@ -101,10 +100,10 @@ export function ChangePasswordForm({
         </Field>
         <Button
           type="submit"
-          disabled={pending}
+          loading={pending}
           className={embedded ? undefined : "w-full"}
         >
-          {pending ? "Saving..." : "Save password"}
+          Save password
         </Button>
       </FieldGroup>
     </form>

@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -22,9 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useInviteMemberMutation } from "@/hooks/use-mutations";
+import { isApiRequestError } from "@/lib/api";
 import { ORG_ROLE_LABELS, ORG_ROLES, type OrgRole } from "@/lib/roles";
 import { inviteSchema } from "@/lib/validations";
-import { inviteMemberAction } from "@/server/actions";
 
 export function InviteDialog({
   teams,
@@ -33,9 +33,8 @@ export function InviteDialog({
   teams: { id: string; name: string }[];
   actorRole: string;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [pending, setPending] = useState(false);
+  const inviteMember = useInviteMemberMutation();
   const canInviteOwner = actorRole === ORG_ROLES.owner;
   const form = useForm<z.infer<typeof inviteSchema>>({
     resolver: zodResolver(inviteSchema),
@@ -47,27 +46,24 @@ export function InviteDialog({
   });
 
   async function onSubmit(values: z.infer<typeof inviteSchema>) {
-    setPending(true);
-    const result = await inviteMemberAction({
-      email: values.email,
-      role: values.role,
-      teamId: values.teamId,
-    });
-    setPending(false);
-
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
+    try {
+      const result = await inviteMember.mutateAsync({
+        email: values.email,
+        role: values.role,
+        teamId: values.teamId,
+      });
+      toast.success(
+        result.provisioned
+          ? "Invitation sent with temporary credentials."
+          : "Invitation sent.",
+      );
+      setOpen(false);
+      form.reset();
+    } catch (error) {
+      toast.error(
+        isApiRequestError(error) ? error.message : "Could not send invitation.",
+      );
     }
-
-    toast.success(
-      result.provisioned
-        ? "Invitation sent with temporary credentials."
-        : "Invitation sent.",
-    );
-    setOpen(false);
-    form.reset();
-    router.refresh();
   }
 
   const roles = (Object.entries(ORG_ROLE_LABELS) as [OrgRole, string][]).filter(
@@ -143,8 +139,8 @@ export function InviteDialog({
                 </SelectContent>
               </Select>
             </Field>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Sending..." : "Send invitation"}
+            <Button type="submit" loading={inviteMember.isPending}>
+              Send invitation
             </Button>
           </FieldGroup>
         </form>

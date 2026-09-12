@@ -1,28 +1,43 @@
-import { notFound } from "next/navigation";
+"use client";
+
+import { useParams } from "next/navigation";
 import { DietChartEditor } from "@/components/diet/diet-chart-editor";
+import { DietChartEditorSkeleton } from "@/components/skeletons";
+import { useDietChartQuery, useMeQuery } from "@/hooks/use-queries";
+import { isApiRequestError } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
-import { parseOrgBranding } from "@/lib/org-branding";
-import { requireOrganization } from "@/server/auth";
-import { getDietChart } from "@/server/diet-charts";
 
-export default async function DietChartEditorPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const [{ organization }, chart] = await Promise.all([
-    requireOrganization(),
-    getDietChart(id),
-  ]);
+export default function DietChartEditorPage() {
+  const params = useParams<{ id: string }>();
+  const me = useMeQuery();
+  const chartQuery = useDietChartQuery(params.id);
 
-  if (!chart) {
-    notFound();
+  if (me.isPending || chartQuery.isPending || !me.data) {
+    return <DietChartEditorSkeleton />;
   }
+
+  if (chartQuery.error || !chartQuery.data) {
+    const message =
+      isApiRequestError(chartQuery.error) &&
+      chartQuery.error.code === "NOT_FOUND"
+        ? "This diet chart was not found."
+        : "Could not load this diet chart.";
+
+    return (
+      <div className="rounded-xl border bg-card p-8 text-center shadow-sm">
+        <p className="font-medium">{message}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          It may have been removed, or you may not have access.
+        </p>
+      </div>
+    );
+  }
+
+  const chart = chartQuery.data;
 
   return (
     <DietChartEditor
-      branding={parseOrgBranding(organization)}
+      branding={me.data.branding}
       chart={{
         id: chart.id,
         title: chart.title,

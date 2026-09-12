@@ -22,14 +22,16 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  useAcceptInvitationMutation,
+  useInvalidateAppQueries,
+  useRejectInvitationMutation,
+} from "@/hooks/use-mutations";
+import { isApiRequestError } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
 import { getAuthErrorMessage } from "@/lib/auth-errors";
 import { getPrimaryRoleLabel } from "@/lib/roles";
 import { organizationSchema, slugFromName } from "@/lib/validations";
-import {
-  acceptInvitationAction,
-  rejectInvitationAction,
-} from "@/server/actions";
 
 type PendingInvitation = {
   id: string;
@@ -46,6 +48,9 @@ export function OnboardingForm({
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const invalidate = useInvalidateAppQueries();
+  const acceptInvitation = useAcceptInvitationMutation();
+  const rejectInvitation = useRejectInvitationMutation();
   const form = useForm<z.infer<typeof organizationSchema>>({
     resolver: zodResolver(organizationSchema),
     defaultValues: { name: "", slug: "" },
@@ -75,33 +80,35 @@ export function OnboardingForm({
     }
 
     toast.success("Organization created.");
+    invalidate();
     router.replace("/continue");
-    router.refresh();
   }
 
   async function accept(id: string) {
-    setPending(true);
-    const result = await acceptInvitationAction(id);
-    setPending(false);
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
+    try {
+      await acceptInvitation.mutateAsync(id);
+      toast.success("Invitation accepted.");
+      router.replace("/continue");
+    } catch (error) {
+      toast.error(
+        isApiRequestError(error)
+          ? error.message
+          : "Could not accept invitation.",
+      );
     }
-    toast.success("Invitation accepted.");
-    router.replace("/continue");
-    router.refresh();
   }
 
   async function reject(id: string) {
-    setPending(true);
-    const result = await rejectInvitationAction(id);
-    setPending(false);
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
+    try {
+      await rejectInvitation.mutateAsync(id);
+      toast.success("Invitation declined.");
+    } catch (error) {
+      toast.error(
+        isApiRequestError(error)
+          ? error.message
+          : "Could not decline invitation.",
+      );
     }
-    toast.success("Invitation declined.");
-    router.refresh();
   }
 
   return (
@@ -133,8 +140,8 @@ export function OnboardingForm({
               <Input id="slug" {...form.register("slug")} />
               <FieldError>{form.formState.errors.slug?.message}</FieldError>
             </Field>
-            <Button type="submit" disabled={pending} className="w-full">
-              {pending ? "Creating..." : "Create organization"}
+            <Button type="submit" loading={pending} className="w-full">
+              Create organization
             </Button>
           </FieldGroup>
         </form>
@@ -165,6 +172,10 @@ export function OnboardingForm({
                   <Button
                     size="sm"
                     onClick={() => accept(invitation.id)}
+                    loading={
+                      acceptInvitation.isPending &&
+                      acceptInvitation.variables === invitation.id
+                    }
                     disabled={pending}
                   >
                     Accept
@@ -173,6 +184,10 @@ export function OnboardingForm({
                     size="sm"
                     variant="outline"
                     onClick={() => reject(invitation.id)}
+                    loading={
+                      rejectInvitation.isPending &&
+                      rejectInvitation.variables === invitation.id
+                    }
                     disabled={pending}
                   >
                     Decline

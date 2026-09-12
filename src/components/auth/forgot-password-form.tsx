@@ -59,8 +59,8 @@ export function ForgotPasswordForm() {
             />
             <FieldError>{form.formState.errors.email?.message}</FieldError>
           </Field>
-          <Button type="submit" disabled={pending} className="w-full">
-            {pending ? "Sending..." : "Send reset link"}
+          <Button type="submit" loading={pending} className="w-full">
+            Send reset link
           </Button>
         </FieldGroup>
       </form>

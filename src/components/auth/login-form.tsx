@@ -54,7 +54,6 @@ export function LoginForm() {
     const destination = nextPath.startsWith("/") ? nextPath : "/continue";
     const homePaths = new Set(["/dashboard", "/diet-charts", "/attendance"]);
     router.replace(homePaths.has(destination) ? "/continue" : destination);
-    router.refresh();
   }
 
   return (
@@ -83,8 +82,8 @@ export function LoginForm() {
             />
             <FieldError>{form.formState.errors.password?.message}</FieldError>
           </Field>
-          <Button type="submit" disabled={pending} className="w-full">
-            {pending ? "Signing in..." : "Sign in"}
+          <Button type="submit" loading={pending} className="w-full">
+            Sign in
           </Button>
         </FieldGroup>
       </form>

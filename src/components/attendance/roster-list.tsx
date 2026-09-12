@@ -5,9 +5,9 @@ import { useMemo, useState } from "react";
 import { CloseSessionButton } from "@/components/attendance/close-session-button";
 import { WorkStatusBadge } from "@/components/attendance/work-status-badge";
 import { Input } from "@/components/ui/input";
-import { formatDateTime, formatDuration } from "@/lib/format";
+import type { TeamRosterPerson } from "@/lib/api-types";
+import { formatDuration, formatPunchTimes } from "@/lib/format";
 import { getPrimaryRoleLabel } from "@/lib/roles";
-import type { TeamRosterPerson } from "@/server/work";
 
 export function RosterList({
   people,
@@ -57,7 +57,7 @@ export function RosterList({
             {filtered.map((person) => (
               <li
                 key={person.userId}
-                className="rounded-xl border bg-card p-4 shadow-sm"
+                className="rounded-xl border bg-card p-4 shadow-sm transition-colors hover:bg-muted/50"
               >
                 <RosterPersonCard person={person} mode={mode} />
               </li>
@@ -73,7 +73,7 @@ export function RosterList({
                     {mode === "dashboard" ? "Hours today" : "This week"}
                   </th>
                   <th className="px-4 py-3 font-medium">
-                    {mode === "dashboard" ? "Punch" : "Last ended"}
+                    {mode === "dashboard" ? "Punch" : "Last punch"}
                   </th>
                   <th className="px-4 py-3 font-medium"> </th>
                 </tr>
@@ -82,7 +82,7 @@ export function RosterList({
                 {filtered.map((person) => (
                   <tr
                     key={person.userId}
-                    className="border-b last:border-0 even:bg-muted/20"
+                    className="border-b last:border-0 even:bg-muted/20 transition-colors hover:bg-muted/40"
                   >
                     <td className="px-4 py-3">
                       <p className="font-medium">{person.name}</p>
@@ -105,17 +105,7 @@ export function RosterList({
                         : `${formatDuration(person.hoursThisWeekMs)} · ${person.daysWithWorkThisWeek} days with work`}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {mode === "dashboard"
-                        ? person.isWorking && person.startedAt
-                          ? `In since ${formatDateTime(person.startedAt)}`
-                          : person.lastEndedAt
-                            ? `Out ${formatDateTime(person.lastEndedAt)}`
-                            : "No sessions yet"
-                        : person.lastEndedAt
-                          ? formatDateTime(person.lastEndedAt)
-                          : person.isWorking
-                            ? "Still working"
-                            : "No sessions yet"}
+                      <PunchTimesLines person={person} />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap items-center justify-end gap-2">
@@ -127,7 +117,7 @@ export function RosterList({
                         ) : null}
                         <Link
                           href={`/attendance/${person.userId}`}
-                          className="text-sm text-primary hover:underline"
+                          className="text-sm text-primary transition-colors hover:underline"
                         >
                           View log
                         </Link>
@@ -166,26 +156,37 @@ function RosterPersonCard({
           isStale={person.isStale}
         />
       </div>
-      <p className="text-sm text-muted-foreground">
-        {mode === "dashboard"
-          ? person.isWorking && person.startedAt
-            ? `In since ${formatDateTime(person.startedAt)} · ${formatDuration(person.hoursTodayMs)} today`
-            : person.lastEndedAt
-              ? `Last out ${formatDateTime(person.lastEndedAt)} · ${formatDuration(person.hoursTodayMs)} today`
-              : "No work sessions yet"
-          : `${formatDuration(person.hoursThisWeekMs)} this week · ${person.daysWithWorkThisWeek} days with work`}
-      </p>
+      <div className="space-y-1 text-sm text-muted-foreground">
+        <PunchTimesLines person={person} />
+        <p>
+          {mode === "dashboard"
+            ? `${formatDuration(person.hoursTodayMs)} today`
+            : `${formatDuration(person.hoursThisWeekMs)} this week · ${person.daysWithWorkThisWeek} days with work`}
+        </p>
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         {person.isWorking ? (
           <CloseSessionButton userId={person.userId} name={person.name} />
         ) : null}
         <Link
           href={`/attendance/${person.userId}`}
-          className="text-sm font-medium text-primary hover:underline"
+          className="text-sm font-medium text-primary transition-colors hover:underline"
         >
           View log
         </Link>
       </div>
     </div>
+  );
+}
+
+function PunchTimesLines({ person }: { person: TeamRosterPerson }) {
+  const { lines } = formatPunchTimes(person);
+
+  return (
+    <span className="flex flex-col gap-0.5">
+      {lines.map((line) => (
+        <span key={line}>{line}</span>
+      ))}
+    </span>
   );
 }

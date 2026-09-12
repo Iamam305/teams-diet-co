@@ -1,15 +1,13 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useTransition,
-} from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
+import {
+  useEndWorkMutation,
+  useStartWorkMutation,
+} from "@/hooks/use-mutations";
+import { isApiRequestError } from "@/lib/api";
 import { formatDuration } from "@/lib/format";
-import { endWorkAction, startWorkAction } from "@/server/work";
 
 type WorkStatusContextValue = {
   activeStartedAt: string | null;
@@ -29,7 +27,9 @@ export function WorkStatusProvider({
 }) {
   const [activeStartedAt, setActiveStartedAt] = useState(startedAt);
   const [now, setNow] = useState<number | null>(null);
-  const [pending, startTransition] = useTransition();
+  const startWork = useStartWorkMutation();
+  const endWork = useEndWorkMutation();
+  const pending = startWork.isPending || endWork.isPending;
 
   useEffect(() => {
     setActiveStartedAt(startedAt);
@@ -51,27 +51,23 @@ export function WorkStatusProvider({
       ? formatDuration(now - new Date(activeStartedAt).getTime())
       : null;
 
-  function toggle() {
-    startTransition(async () => {
+  async function toggle() {
+    try {
       if (activeStartedAt) {
-        const result = await endWorkAction();
-        if (!result.ok) {
-          toast.error(result.error);
-          return;
-        }
+        await endWork.mutateAsync();
         setActiveStartedAt(null);
         toast.success("Work ended.");
         return;
       }
 
-      const result = await startWorkAction();
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
+      const result = await startWork.mutateAsync();
       setActiveStartedAt(result.startedAt);
       toast.success("Work started.");
-    });
+    } catch (error) {
+      toast.error(
+        isApiRequestError(error) ? error.message : "Could not update work.",
+      );
+    }
   }
 
   return (

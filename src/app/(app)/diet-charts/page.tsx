@@ -1,11 +1,28 @@
+"use client";
+
 import Link from "next/link";
 import { PageHeader } from "@/components/app/page-header";
 import { CreateDietChartButton } from "@/components/diet/create-diet-chart-button";
+import { DietChartsListSkeleton, QueryError } from "@/components/skeletons";
+import { useDietChartsQuery } from "@/hooks/use-queries";
 import { formatDateTime } from "@/lib/format";
-import { listDietCharts } from "@/server/diet-charts";
 
-export default async function DietChartsPage() {
-  const charts = await listDietCharts();
+export default function DietChartsPage() {
+  const chartsQuery = useDietChartsQuery();
+
+  if (chartsQuery.isPending) {
+    return <DietChartsListSkeleton />;
+  }
+
+  if (chartsQuery.isError) {
+    return (
+      <div className="mx-auto max-w-5xl">
+        <QueryError message="Could not load diet charts." />
+      </div>
+    );
+  }
+
+  const charts = chartsQuery.data ?? [];
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -33,7 +50,7 @@ export default async function DietChartsPage() {
               <li key={chart.id}>
                 <Link
                   href={`/diet-charts/${chart.id}`}
-                  className="block rounded-xl border bg-card p-4 shadow-sm"
+                  className="block rounded-xl border bg-card p-4 shadow-sm transition-colors hover:bg-muted/50"
                 >
                   <p className="font-medium">{chart.title}</p>
                   <p className="mt-1 text-sm text-muted-foreground">
@@ -61,12 +78,12 @@ export default async function DietChartsPage() {
                 {charts.map((chart) => (
                   <tr
                     key={chart.id}
-                    className="border-b last:border-0 even:bg-muted/40"
+                    className="border-b last:border-0 even:bg-muted/40 transition-colors hover:bg-muted/60"
                   >
                     <td className="px-4 py-3">
                       <Link
                         href={`/diet-charts/${chart.id}`}
-                        className="font-medium hover:text-primary hover:underline"
+                        className="font-medium transition-colors hover:text-primary hover:underline"
                       >
                         {chart.title}
                       </Link>

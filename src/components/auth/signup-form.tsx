@@ -88,8 +88,8 @@ export function SignupForm() {
             />
             <FieldError>{form.formState.errors.password?.message}</FieldError>
           </Field>
-          <Button type="submit" disabled={pending} className="w-full">
-            {pending ? "Creating account..." : "Create account"}
+          <Button type="submit" loading={pending} className="w-full">
+            Create account
           </Button>
         </FieldGroup>
       </form>

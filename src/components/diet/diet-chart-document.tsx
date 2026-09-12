@@ -86,7 +86,7 @@ export function DietChartDocument({
                   <tr className="bg-[#2f6a4e] text-left text-[11px] font-semibold tracking-wide text-[#f4faf6] uppercase">
                     <th className="w-[24%] px-3 py-2">Meal name</th>
                     <th className="w-[56%] px-3 py-2">Meal contents</th>
-                    <th className="w-[20%] px-3 py-2 text-center">QR</th>
+                    <th className="w-[20%] px-3 py-2 text-center">Recipe</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -123,7 +123,7 @@ export function DietChartDocument({
                                 {/* biome-ignore lint/performance/noImgElement: QR codes are inline data URLs */}
                                 <img
                                   src={qr}
-                                  alt={`Recipe QR code for ${meal.name}`}
+                                  alt={`Recipe link for ${meal.name}`}
                                   className="size-14"
                                 />
                                 <a
@@ -132,7 +132,7 @@ export function DietChartDocument({
                                   rel="noreferrer"
                                   className="text-xs font-medium text-[#2f6a4e] underline underline-offset-2"
                                 >
-                                  link
+                                  Recipe
                                 </a>
                               </div>
                             ) : null}

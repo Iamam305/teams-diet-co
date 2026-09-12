@@ -6,6 +6,7 @@ import { user } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { canAccessTeam, type TeamAccessAction } from "@/lib/auth-gates";
 import { isMainAdmin, isTeamAdmin, type OrgRole } from "@/lib/roles";
+import { ApiError } from "@/server/api-error";
 import { listTeamIdsForUser } from "@/server/org-hooks";
 
 export type AppSession = NonNullable<Awaited<ReturnType<typeof getSession>>>;
@@ -16,24 +17,63 @@ export async function getSession() {
   });
 }
 
-export async function requireSession() {
+function redirectFromApiError(error: unknown): never {
+  if (error instanceof ApiError) {
+    if (error.code === "UNAUTHENTICATED") {
+      redirect("/login");
+    }
+    if (error.code === "EMAIL_UNVERIFIED") {
+      redirect("/verify-email");
+    }
+    if (error.code === "PASSWORD_CHANGE_REQUIRED") {
+      redirect("/change-password");
+    }
+    if (error.code === "NO_ORGANIZATION") {
+      redirect("/onboarding");
+    }
+  }
+
+  throw error;
+}
+
+export async function requireApiSession() {
   const session = await getSession();
 
   if (!session) {
-    redirect("/login");
+    throw new ApiError(401, "Sign in to continue.", "UNAUTHENTICATED");
+  }
+
+  return session;
+}
+
+export async function requireSession() {
+  try {
+    return await requireApiSession();
+  } catch (error) {
+    redirectFromApiError(error);
+  }
+}
+
+export async function requireApiVerifiedEmail() {
+  const session = await requireApiSession();
+
+  if (!session.user.emailVerified) {
+    throw new ApiError(
+      403,
+      "Verify your email to continue.",
+      "EMAIL_UNVERIFIED",
+    );
   }
 
   return session;
 }
 
 export async function requireVerifiedEmail() {
-  const session = await requireSession();
-
-  if (!session.user.emailVerified) {
-    redirect("/verify-email");
+  try {
+    return await requireApiVerifiedEmail();
+  } catch (error) {
+    redirectFromApiError(error);
   }
-
-  return session;
 }
 
 export async function userMustChangePassword(userId: string) {
@@ -46,14 +86,26 @@ export async function userMustChangePassword(userId: string) {
   return Boolean(row?.mustChangePassword);
 }
 
-export async function requirePasswordReady() {
-  const session = await requireVerifiedEmail();
+export async function requireApiPasswordReady() {
+  const session = await requireApiVerifiedEmail();
 
   if (await userMustChangePassword(session.user.id)) {
-    redirect("/change-password");
+    throw new ApiError(
+      403,
+      "Change your password to continue.",
+      "PASSWORD_CHANGE_REQUIRED",
+    );
   }
 
   return session;
+}
+
+export async function requirePasswordReady() {
+  try {
+    return await requireApiPasswordReady();
+  } catch (error) {
+    redirectFromApiError(error);
+  }
 }
 
 export async function getOrganizations() {
@@ -62,15 +114,19 @@ export async function getOrganizations() {
   });
 }
 
-export async function requireOrganization() {
-  const session = await requirePasswordReady();
+export async function requireApiOrganization() {
+  const session = await requireApiPasswordReady();
   const organizations = await getOrganizations();
   const activeOrganizationId = (
     session.session as { activeOrganizationId?: string | null }
   ).activeOrganizationId;
 
   if (!organizations?.length) {
-    redirect("/onboarding");
+    throw new ApiError(
+      403,
+      "Create or join an organization.",
+      "NO_ORGANIZATION",
+    );
   }
 
   const organizationId =
@@ -98,7 +154,11 @@ export async function requireOrganization() {
   );
 
   if (!member || !fullOrganization) {
-    redirect("/onboarding");
+    throw new ApiError(
+      403,
+      "Create or join an organization.",
+      "NO_ORGANIZATION",
+    );
   }
 
   return {
@@ -109,15 +169,27 @@ export async function requireOrganization() {
   };
 }
 
+export async function requireOrganization() {
+  try {
+    return await requireApiOrganization();
+  } catch (error) {
+    redirectFromApiError(error);
+  }
+}
+
 export async function requirePermission(permissions: Record<string, string[]>) {
-  const context = await requireOrganization();
+  const context = await requireApiOrganization();
   const result = await auth.api.hasPermission({
     headers: await headers(),
     body: { permissions },
   });
 
   if (!result?.success) {
-    throw new Error("You do not have permission to do that.");
+    throw new ApiError(
+      403,
+      "You do not have permission to do that.",
+      "FORBIDDEN",
+    );
   }
 
   return context;
@@ -139,7 +211,7 @@ export async function requireTeamAccess(
   teamId: string,
   action: TeamAccessAction,
 ) {
-  const context = await requireOrganization();
+  const context = await requireApiOrganization();
   const memberTeamIds = await listTeamIdsForUser(
     context.session.user.id,
     context.organization.id,
@@ -153,7 +225,11 @@ export async function requireTeamAccess(
       action,
     })
   ) {
-    throw new Error("You do not have permission to do that.");
+    throw new ApiError(
+      403,
+      "You do not have permission to do that.",
+      "FORBIDDEN",
+    );
   }
 
   return context;

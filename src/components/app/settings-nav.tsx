@@ -19,7 +19,7 @@ export function SettingsNav({ role }: { role: string }) {
           key={item.href}
           href={item.href}
           className={cn(
-            "rounded-lg px-2.5 py-1.5 text-sm whitespace-nowrap text-muted-foreground hover:bg-accent hover:text-foreground",
+            "rounded-lg px-2.5 py-1.5 text-sm whitespace-nowrap text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground",
             pathname === item.href &&
               "bg-primary font-medium text-primary-foreground hover:bg-primary hover:text-primary-foreground",
           )}

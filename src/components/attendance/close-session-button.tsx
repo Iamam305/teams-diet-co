@@ -1,10 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { closeWorkSessionAction } from "@/server/work";
+import { useCloseWorkMutation } from "@/hooks/use-mutations";
+import { isApiRequestError } from "@/lib/api";
 
 export function CloseSessionButton({
   userId,
@@ -13,21 +12,19 @@ export function CloseSessionButton({
   userId: string;
   name: string;
 }) {
-  const router = useRouter();
-  const [pending, setPending] = useState(false);
+  const closeSession = useCloseWorkMutation();
 
-  async function closeSession() {
-    setPending(true);
-    const result = await closeWorkSessionAction(userId);
-    setPending(false);
-
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
+  async function onClose() {
+    try {
+      await closeSession.mutateAsync(userId);
+      toast.success(`Ended work for ${name}.`);
+    } catch (error) {
+      toast.error(
+        isApiRequestError(error)
+          ? error.message
+          : "Could not close the session.",
+      );
     }
-
-    toast.success(`Ended work for ${name}.`);
-    router.refresh();
   }
 
   return (
@@ -35,10 +32,10 @@ export function CloseSessionButton({
       type="button"
       size="sm"
       variant="outline"
-      disabled={pending}
-      onClick={closeSession}
+      loading={closeSession.isPending && closeSession.variables === userId}
+      onClick={onClose}
     >
-      {pending ? "Closing..." : "Close session"}
+      Close session
     </Button>
   );
 }

@@ -7,8 +7,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { activityTypeLabel } from "@/lib/activity";
+import type { ActivityRow } from "@/lib/api-types";
 import { formatDateTime } from "@/lib/format";
-import type { ActivityRow } from "@/server/queries";
 
 function activityDetail(row: ActivityRow) {
   const title =

@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -14,6 +13,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { useInvalidateAppQueries } from "@/hooks/use-mutations";
 import { authClient } from "@/lib/auth-client";
 import { getAuthErrorMessage } from "@/lib/auth-errors";
 import { profileSchema } from "@/lib/validations";
@@ -25,7 +25,7 @@ export function ProfileForm({
   name: string;
   username: string;
 }) {
-  const router = useRouter();
+  const invalidate = useInvalidateAppQueries();
   const [pending, setPending] = useState(false);
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
@@ -46,7 +46,7 @@ export function ProfileForm({
     }
 
     toast.success("Profile updated.");
-    router.refresh();
+    invalidate();
   }
 
   return (
@@ -66,8 +66,8 @@ export function ProfileForm({
           />
           <FieldError>{form.formState.errors.username?.message}</FieldError>
         </Field>
-        <Button type="submit" disabled={pending}>
-          {pending ? "Saving..." : "Save profile"}
+        <Button type="submit" loading={pending}>
+          Save profile
         </Button>
       </FieldGroup>
     </form>

@@ -1,10 +1,9 @@
+"use client";
+
 import { PageHeader } from "@/components/app/page-header";
 import { ChangePasswordForm } from "@/components/auth/change-password-form";
-import { requireOrganization } from "@/server/auth";
 
-export default async function SecuritySettingsPage() {
-  await requireOrganization();
-
+export default function SecuritySettingsPage() {
   return (
     <div>
       <PageHeader

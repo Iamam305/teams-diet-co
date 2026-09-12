@@ -1,16 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { toast } from "sonner";
 import { AuthCard } from "@/components/auth/auth-card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { getPrimaryRoleLabel } from "@/lib/roles";
 import {
-  acceptInvitationAction,
-  rejectInvitationAction,
-} from "@/server/actions";
+  useAcceptInvitationMutation,
+  useRejectInvitationMutation,
+} from "@/hooks/use-mutations";
+import { isApiRequestError } from "@/lib/api";
+import { getPrimaryRoleLabel } from "@/lib/roles";
 
 export type InvitationState =
   | {
@@ -30,42 +30,47 @@ export function InvitationCard({
   signedIn: boolean;
 }) {
   const router = useRouter();
-  const [pending, setPending] = useState(false);
+  const acceptInvitation = useAcceptInvitationMutation();
+  const rejectInvitation = useRejectInvitationMutation();
+  const pending = acceptInvitation.isPending || rejectInvitation.isPending;
+
+  function handleInviteError(error: unknown) {
+    if (isApiRequestError(error) && error.code === "PASSWORD_CHANGE_REQUIRED") {
+      router.replace("/change-password");
+      return;
+    }
+
+    toast.error(
+      isApiRequestError(error) ? error.message : "Could not update invitation.",
+    );
+  }
 
   async function accept() {
     if (invitation.status !== "pending") {
       return;
     }
-    setPending(true);
-    const result = await acceptInvitationAction(invitation.id);
-    setPending(false);
 
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
+    try {
+      await acceptInvitation.mutateAsync(invitation.id);
+      toast.success("Invitation accepted.");
+      router.replace("/continue");
+    } catch (error) {
+      handleInviteError(error);
     }
-
-    toast.success("Invitation accepted.");
-    router.replace("/continue");
-    router.refresh();
   }
 
   async function reject() {
     if (invitation.status !== "pending") {
       return;
     }
-    setPending(true);
-    const result = await rejectInvitationAction(invitation.id);
-    setPending(false);
 
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
+    try {
+      await rejectInvitation.mutateAsync(invitation.id);
+      toast.success("Invitation declined.");
+      router.replace("/onboarding");
+    } catch (error) {
+      handleInviteError(error);
     }
-
-    toast.success("Invitation declined.");
-    router.replace("/onboarding");
-    router.refresh();
   }
 
   if (invitation.status !== "pending") {
@@ -113,14 +118,14 @@ export function InvitationCard({
       </p>
       {signedIn ? (
         <div className="flex gap-2">
-          <Button className="flex-1" onClick={accept} disabled={pending}>
-            {pending ? "Working..." : "Accept"}
+          <Button className="flex-1" onClick={accept} loading={pending}>
+            Accept
           </Button>
           <Button
             className="flex-1"
             variant="outline"
             onClick={reject}
-            disabled={pending}
+            loading={pending}
           >
             Decline
           </Button>
