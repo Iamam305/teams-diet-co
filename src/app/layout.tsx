@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import NextTopLoader from "nextjs-toploader";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -31,6 +32,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="relative min-h-full flex flex-col">
+        <NextTopLoader
+          color="var(--primary)"
+          height={2}
+          showSpinner={false}
+          shadow="0 0 8px var(--primary)"
+        />
         <Providers>{children}</Providers>
       </body>
     </html>

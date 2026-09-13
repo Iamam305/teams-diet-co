@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { toast } from "sonner";
 import { AuthCard } from "@/components/auth/auth-card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";

@@ -1,6 +1,7 @@
 "use client";
 
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { Suspense, useEffect } from "react";
 import { PageHeader } from "@/components/app/page-header";
 import { AttendanceDetail } from "@/components/attendance/attendance-detail";

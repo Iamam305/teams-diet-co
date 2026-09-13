@@ -2,8 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
-import { type ReactNode, Suspense } from "react";
-import { NavigationProgress } from "@/components/navigation-progress";
+import type { ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 
 function makeQueryClient() {
@@ -33,9 +32,6 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <NuqsAdapter>
-        <Suspense fallback={null}>
-          <NavigationProgress />
-        </Suspense>
         {children}
         <Toaster />
       </NuqsAdapter>

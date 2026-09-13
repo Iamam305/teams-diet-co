@@ -2,7 +2,8 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
