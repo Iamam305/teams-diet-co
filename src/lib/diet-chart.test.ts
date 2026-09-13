@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cloneDay,
+  cloneDays,
   createDefaultDays,
   createMeal,
   isHttpUrl,
@@ -30,6 +31,15 @@ describe("diet chart documents", () => {
 
     expect(cloned.meals[0].content).toBe("Oats");
     expect(cloned.meals[0].id).not.toBe(original.meals[0].id);
+  });
+
+  it("clones a full week without reusing meal ids", () => {
+    const original = createDefaultDays();
+    original.friday.meals[1].content = "Salad";
+    const cloned = cloneDays(original);
+
+    expect(cloned.friday.meals[1].content).toBe("Salad");
+    expect(cloned.friday.meals[1].id).not.toBe(original.friday.meals[1].id);
   });
 
   it("round-trips days json", () => {

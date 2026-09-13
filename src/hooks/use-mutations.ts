@@ -27,6 +27,8 @@ type DietChartPayload = {
   notes?: string;
   startDate?: string;
   endDate?: string;
+  extraClientInfo?: Array<{ key: string; value: string }>;
+  footnote?: string;
   days: DietDays;
 };
 
@@ -98,6 +100,19 @@ export function useUpdateDietChartMutation() {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.dietChart(variables.id),
       });
+    },
+  });
+}
+
+export function useCloneDietChartMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      api<{ id: string }>(`/api/diet-charts/${id}/clone`, { method: "POST" }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dietCharts });
+      void queryClient.invalidateQueries({ queryKey: ["activity"] });
     },
   });
 }

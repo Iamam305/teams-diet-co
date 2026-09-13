@@ -45,6 +45,8 @@ export default function DietChartEditorPage() {
         notes: chart.notes,
         startDate: chart.startDate,
         endDate: chart.endDate,
+        extraClientInfo: chart.extraClientInfo,
+        footnote: chart.footnote,
         days: chart.days,
         createdByName: chart.createdByName,
         updatedByName: chart.updatedByName,

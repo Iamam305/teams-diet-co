@@ -22,6 +22,8 @@ export default function NewDietChartPage() {
         notes: null,
         startDate: null,
         endDate: null,
+        extraClientInfo: [],
+        footnote: null,
         days: createDefaultDays(),
         createdByName: me.data.user.name,
         updatedByName: me.data.user.name,

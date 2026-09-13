@@ -1,14 +1,40 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/app/page-header";
 import { CreateDietChartButton } from "@/components/diet/create-diet-chart-button";
 import { DietChartsListSkeleton, QueryError } from "@/components/skeletons";
+import { Button } from "@/components/ui/button";
+import { useCloneDietChartMutation } from "@/hooks/use-mutations";
 import { useDietChartsQuery } from "@/hooks/use-queries";
+import { isApiRequestError } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 
 export default function DietChartsPage() {
+  const router = useRouter();
   const chartsQuery = useDietChartsQuery();
+  const cloneChart = useCloneDietChartMutation();
+  const [cloningId, setCloningId] = useState<string | null>(null);
+
+  async function handleClone(id: string) {
+    setCloningId(id);
+    try {
+      const result = await cloneChart.mutateAsync(id);
+      toast.success("Diet chart cloned.");
+      router.push(`/diet-charts/${result.id}`);
+    } catch (error) {
+      toast.error(
+        isApiRequestError(error)
+          ? error.message
+          : "Could not clone diet chart.",
+      );
+    } finally {
+      setCloningId(null);
+    }
+  }
 
   if (chartsQuery.isPending) {
     return <DietChartsListSkeleton />;
@@ -47,10 +73,10 @@ export default function DietChartsPage() {
         <>
           <ul className="space-y-3 md:hidden">
             {charts.map((chart) => (
-              <li key={chart.id}>
+              <li key={chart.id} className="rounded-xl border bg-card p-4 shadow-sm">
                 <Link
                   href={`/diet-charts/${chart.id}`}
-                  className="block rounded-xl border bg-card p-4 shadow-sm transition-colors hover:bg-muted/50"
+                  className="block transition-colors hover:text-primary"
                 >
                   <p className="font-medium">{chart.title}</p>
                   <p className="mt-1 text-sm text-muted-foreground">
@@ -61,6 +87,18 @@ export default function DietChartsPage() {
                     {formatDateTime(chart.updatedAt)}
                   </p>
                 </Link>
+                <div className="mt-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    loading={cloningId === chart.id}
+                    disabled={cloningId !== null && cloningId !== chart.id}
+                    onClick={() => void handleClone(chart.id)}
+                  >
+                    Clone
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
@@ -72,6 +110,7 @@ export default function DietChartsPage() {
                   <th className="px-4 py-3 font-medium">Client</th>
                   <th className="px-4 py-3 font-medium">Created by</th>
                   <th className="px-4 py-3 font-medium">Last edited</th>
+                  <th className="px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -96,6 +135,18 @@ export default function DietChartsPage() {
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {chart.updatedByName} · {formatDateTime(chart.updatedAt)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        loading={cloningId === chart.id}
+                        disabled={cloningId !== null && cloningId !== chart.id}
+                        onClick={() => void handleClone(chart.id)}
+                      >
+                        Clone
+                      </Button>
                     </td>
                   </tr>
                 ))}

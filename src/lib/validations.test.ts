@@ -45,6 +45,8 @@ describe("validations", () => {
       notes: "",
       startDate: "",
       endDate: "",
+      extraClientInfo: [{ key: "Age", value: "32" }],
+      footnote: "Follow as advised.",
       days: createDefaultDays(),
     });
     expect(result.success).toBe(true);

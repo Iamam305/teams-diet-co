@@ -107,6 +107,18 @@ export function cloneDay(day: DietDay): DietDay {
   };
 }
 
+export function cloneDays(days: DietDays): DietDays {
+  return {
+    monday: cloneDay(days.monday),
+    tuesday: cloneDay(days.tuesday),
+    wednesday: cloneDay(days.wednesday),
+    thursday: cloneDay(days.thursday),
+    friday: cloneDay(days.friday),
+    saturday: cloneDay(days.saturday),
+    sunday: cloneDay(days.sunday),
+  };
+}
+
 export function parseDaysJson(value: string): DietDays {
   const parsed = dietDaysSchema.parse(JSON.parse(value));
   return parsed;

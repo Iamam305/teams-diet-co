@@ -15,11 +15,12 @@ import {
 } from "@/lib/diet-chart";
 import { formatDateRange } from "@/lib/format";
 import type { OrgBranding } from "@/lib/org-branding";
+import type { ExtraClientInfoItem } from "@/lib/validations";
 
 const styles = StyleSheet.create({
   page: {
     paddingTop: 36,
-    paddingBottom: 40,
+    paddingBottom: 56,
     paddingHorizontal: 32,
     fontFamily: "Helvetica",
     fontSize: 10,
@@ -145,6 +146,18 @@ const styles = StyleSheet.create({
     color: "#2f6a4e",
     textDecoration: "underline",
   },
+  footnote: {
+    position: "absolute",
+    left: 32,
+    right: 32,
+    bottom: 24,
+    fontSize: 8,
+    lineHeight: 1.4,
+    color: "#4d6558",
+    borderTopWidth: 1,
+    borderTopColor: "#d7e6dc",
+    paddingTop: 8,
+  },
 });
 
 export function DietChartPdfDocument({
@@ -154,6 +167,8 @@ export function DietChartPdfDocument({
   notes,
   startDate,
   endDate,
+  extraClientInfo,
+  footnote,
   days,
   qrCodes,
   branding,
@@ -164,10 +179,14 @@ export function DietChartPdfDocument({
   notes?: string | null;
   startDate?: string | null;
   endDate?: string | null;
+  extraClientInfo?: ExtraClientInfoItem[];
+  footnote?: string | null;
   days: DietDays;
   qrCodes: Record<string, string>;
   branding: OrgBranding;
 }) {
+  const footnoteText = footnote?.trim() ?? "";
+
   return (
     <Document title={title.trim() || "Weekly diet chart"}>
       <Page size="A4" wrap style={styles.page}>
@@ -196,6 +215,11 @@ export function DietChartPdfDocument({
           {createdByName ? (
             <Text style={styles.meta}>Prepared by {createdByName}</Text>
           ) : null}
+          {extraClientInfo?.map((item) => (
+            <Text key={`${item.key}:${item.value}`} style={styles.meta}>
+              {item.key}: {item.value.trim() || "-"}
+            </Text>
+          ))}
           {notes?.trim() ? (
             <Text style={styles.meta}>{notes.trim()}</Text>
           ) : null}
@@ -264,6 +288,12 @@ export function DietChartPdfDocument({
             </View>
           );
         })}
+
+        {footnoteText ? (
+          <Text style={styles.footnote} fixed>
+            {footnoteText}
+          </Text>
+        ) : null}
       </Page>
     </Document>
   );

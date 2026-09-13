@@ -30,6 +30,8 @@ export async function PATCH(
       notes?: string;
       startDate?: string;
       endDate?: string;
+      extraClientInfo?: Array<{ key?: string; value?: string }>;
+      footnote?: string;
       days?: DietDays;
     } | null;
 
@@ -44,6 +46,8 @@ export async function PATCH(
       notes: body.notes,
       startDate: body.startDate,
       endDate: body.endDate,
+      extraClientInfo: body.extraClientInfo,
+      footnote: body.footnote,
       days: body.days,
     });
   });

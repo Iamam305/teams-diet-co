@@ -98,6 +98,58 @@ function datesAreInOrder(startDate?: string, endDate?: string) {
   return !start || !end || end >= start;
 }
 
+export const extraClientInfoItemSchema = z.object({
+  key: z.string().trim().min(1, "Label is required").max(80),
+  value: z.string().max(500),
+});
+
+export const extraClientInfoSchema = z
+  .array(extraClientInfoItemSchema)
+  .max(20);
+
+export type ExtraClientInfoItem = z.infer<typeof extraClientInfoItemSchema>;
+
+/** Form rows may be blank while editing; empty keys are dropped on save. */
+export const extraClientInfoFormItemSchema = z.object({
+  key: z.string().max(80),
+  value: z.string().max(500),
+});
+
+export function normalizeExtraClientInfo(
+  items: Array<{ key?: string; value?: string }> | undefined | null,
+): ExtraClientInfoItem[] {
+  if (!items?.length) {
+    return [];
+  }
+
+  return extraClientInfoSchema.parse(
+    items
+      .map((item) => ({
+        key: item.key?.trim() ?? "",
+        value: item.value?.trim() ?? "",
+      }))
+      .filter((item) => item.key.length > 0),
+  );
+}
+
+export function parseExtraClientInfoJson(
+  value: string | null | undefined,
+): ExtraClientInfoItem[] {
+  if (!value?.trim()) {
+    return [];
+  }
+
+  try {
+    return normalizeExtraClientInfo(JSON.parse(value) as Array<{ key?: string; value?: string }>);
+  } catch {
+    return [];
+  }
+}
+
+export function stringifyExtraClientInfo(items: ExtraClientInfoItem[]) {
+  return items.length > 0 ? JSON.stringify(items) : null;
+}
+
 export const dietChartMetaSchema = z
   .object({
     title: z.string().trim().min(1, "Title is required").max(120),
@@ -105,6 +157,8 @@ export const dietChartMetaSchema = z
     notes: z.string().max(4000).optional(),
     startDate: optionalDateField.optional(),
     endDate: optionalDateField.optional(),
+    extraClientInfo: extraClientInfoSchema.optional(),
+    footnote: z.string().max(2000).optional(),
   })
   .refine((value) => datesAreInOrder(value.startDate, value.endDate), {
     message: "End date must be on or after the start date",
@@ -118,6 +172,8 @@ export const dietChartFormSchema = z
     notes: z.string().max(4000),
     startDate: optionalDateField,
     endDate: optionalDateField,
+    extraClientInfo: z.array(extraClientInfoFormItemSchema).max(20),
+    footnote: z.string().max(2000),
     days: dietDaysSchema,
   })
   .refine((value) => datesAreInOrder(value.startDate, value.endDate), {

@@ -81,6 +81,11 @@ export type DietChartListItem = {
   updatedAt: string;
 };
 
+export type ExtraClientInfoItem = {
+  key: string;
+  value: string;
+};
+
 export type DietChartRecord = {
   id: string;
   organizationId: string;
@@ -90,6 +95,8 @@ export type DietChartRecord = {
   notes: string | null;
   startDate: string | null;
   endDate: string | null;
+  extraClientInfo: ExtraClientInfoItem[];
+  footnote: string | null;
   days: DietDays;
   createdByUserId: string;
   updatedByUserId: string;

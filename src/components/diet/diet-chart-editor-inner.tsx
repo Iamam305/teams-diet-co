@@ -1,9 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { PlusIcon, Trash2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { DietChartDocument } from "@/components/diet/diet-chart-document";
 import { DietDayEditor } from "@/components/diet/diet-day-editor";
@@ -11,7 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
+  useCloneDietChartMutation,
   useCreateDietChartMutation,
   useUpdateDietChartMutation,
 } from "@/hooks/use-mutations";
@@ -31,7 +34,9 @@ import type { OrgBranding } from "@/lib/org-branding";
 import { recipeQrMap } from "@/lib/qr";
 import {
   type DietChartFormValues,
+  type ExtraClientInfoItem,
   dietChartFormSchema,
+  normalizeExtraClientInfo,
 } from "@/lib/validations";
 
 const CLIPBOARD_KEY = "team-diet-co-day-clipboard";
@@ -43,6 +48,8 @@ export type DietChartEditorChart = {
   notes: string | null;
   startDate: string | null;
   endDate: string | null;
+  extraClientInfo: ExtraClientInfoItem[];
+  footnote: string | null;
   days: DietDays;
   createdByName: string;
   updatedByName: string;
@@ -68,6 +75,8 @@ function toSavePayload(values: DietChartFormValues) {
     notes: values.notes,
     startDate: values.startDate,
     endDate: values.endDate,
+    extraClientInfo: normalizeExtraClientInfo(values.extraClientInfo),
+    footnote: values.footnote,
     days: normalizeDays(values.days),
   };
 }
@@ -84,6 +93,7 @@ export function DietChartEditorInner({
   const router = useRouter();
   const createChart = useCreateDietChartMutation();
   const updateChart = useUpdateDietChartMutation();
+  const cloneChart = useCloneDietChartMutation();
   const saveChart = updateChart.mutateAsync;
   const form = useForm<DietChartFormValues>({
     resolver: zodResolver(dietChartFormSchema),
@@ -94,8 +104,18 @@ export function DietChartEditorInner({
       notes: chart.notes ?? "",
       startDate: chart.startDate ?? "",
       endDate: chart.endDate ?? "",
+      extraClientInfo: chart.extraClientInfo,
+      footnote: chart.footnote ?? "",
       days: chart.days,
     },
+  });
+  const {
+    fields: extraFields,
+    append: appendExtraField,
+    remove: removeExtraField,
+  } = useFieldArray({
+    control: form.control,
+    name: "extraClientInfo",
   });
   const [activeWeekday, setActiveWeekday] = useState<Weekday>("monday");
   const [saveState, setSaveState] = useState<"saved" | "saving" | "error">(
@@ -112,7 +132,10 @@ export function DietChartEditorInner({
   const notes = form.watch("notes");
   const startDate = form.watch("startDate");
   const endDate = form.watch("endDate");
+  const extraClientInfo = form.watch("extraClientInfo");
+  const footnote = form.watch("footnote");
   const days = form.watch("days");
+  const displayExtraClientInfo = normalizeExtraClientInfo(extraClientInfo);
 
   useEffect(() => {
     setClipboard(readClipboard());
@@ -158,6 +181,8 @@ export function DietChartEditorInner({
       notes,
       startDate,
       endDate,
+      extraClientInfo,
+      footnote,
       days,
     });
 
@@ -188,6 +213,8 @@ export function DietChartEditorInner({
     clientName,
     days,
     endDate,
+    extraClientInfo,
+    footnote,
     mode,
     notes,
     saveChart,
@@ -227,6 +254,24 @@ export function DietChartEditorInner({
     }
   }
 
+  async function onClone() {
+    if (!chart.id) {
+      return;
+    }
+
+    try {
+      const result = await cloneChart.mutateAsync(chart.id);
+      toast.success("Diet chart cloned.");
+      router.push(`/diet-charts/${result.id}`);
+    } catch (error) {
+      toast.error(
+        isApiRequestError(error)
+          ? error.message
+          : "Could not clone diet chart.",
+      );
+    }
+  }
+
   async function downloadPdf() {
     setPdfPending(true);
     try {
@@ -247,6 +292,8 @@ export function DietChartEditorInner({
           notes={notes}
           startDate={startDate}
           endDate={endDate}
+          extraClientInfo={displayExtraClientInfo}
+          footnote={footnote}
           branding={branding}
         />,
       ).toBlob();
@@ -337,6 +384,16 @@ export function DietChartEditorInner({
                       : "Saved"}
                 </p>
               ) : null}
+              {mode === "edit" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  loading={cloneChart.isPending}
+                  onClick={() => void onClone()}
+                >
+                  Clone
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 variant="outline"
@@ -356,6 +413,65 @@ export function DietChartEditorInner({
               placeholder="Optional notes for this chart"
               className="mt-1"
               {...form.register("notes")}
+            />
+          </div>
+          <div className="mt-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <FieldLabel>Extra client info</FieldLabel>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={extraFields.length >= 20}
+                onClick={() => appendExtraField({ key: "", value: "" })}
+              >
+                <PlusIcon data-icon="inline-start" />
+                Add field
+              </Button>
+            </div>
+            {extraFields.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Add custom labels and values for this client (for example Age or
+                Goals).
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {extraFields.map((field, index) => (
+                  <li
+                    key={field.id}
+                    className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
+                  >
+                    <Input
+                      placeholder="Label"
+                      aria-label={`Extra field ${index + 1} label`}
+                      {...form.register(`extraClientInfo.${index}.key`)}
+                    />
+                    <Input
+                      placeholder="Value"
+                      aria-label={`Extra field ${index + 1} value`}
+                      {...form.register(`extraClientInfo.${index}.value`)}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Remove extra field ${index + 1}`}
+                      onClick={() => removeExtraField(index)}
+                    >
+                      <Trash2Icon />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="mt-3">
+            <FieldLabel htmlFor="chart-footnote">Footnote</FieldLabel>
+            <Textarea
+              id="chart-footnote"
+              placeholder="Optional text shown at the bottom of the PDF"
+              className="mt-1"
+              {...form.register("footnote")}
             />
           </div>
           {mode === "edit" ? (
@@ -435,6 +551,8 @@ export function DietChartEditorInner({
             notes={notes}
             startDate={startDate}
             endDate={endDate}
+            extraClientInfo={displayExtraClientInfo}
+            footnote={footnote}
             days={days}
             qrCodes={qrCodes}
             branding={branding}
@@ -457,6 +575,8 @@ export function DietChartEditorInner({
             notes={notes}
             startDate={startDate}
             endDate={endDate}
+            extraClientInfo={displayExtraClientInfo}
+            footnote={footnote}
             days={days}
             qrCodes={qrCodes}
             branding={branding}

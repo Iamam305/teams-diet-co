@@ -200,6 +200,8 @@ export const dietChart = sqliteTable(
     notes: text("notes"),
     startDate: text("start_date"),
     endDate: text("end_date"),
+    extraClientInfoJson: text("extra_client_info_json"),
+    footnote: text("footnote"),
     daysJson: text("days_json").notNull(),
     createdByUserId: text("created_by_user_id")
       .notNull()

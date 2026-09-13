@@ -7,6 +7,7 @@ import {
 import { formatDateRange } from "@/lib/format";
 import type { OrgBranding } from "@/lib/org-branding";
 import { cn } from "@/lib/utils";
+import type { ExtraClientInfoItem } from "@/lib/validations";
 
 export function DietChartDocument({
   title,
@@ -15,6 +16,8 @@ export function DietChartDocument({
   notes,
   startDate,
   endDate,
+  extraClientInfo,
+  footnote,
   days,
   qrCodes,
   branding,
@@ -26,11 +29,15 @@ export function DietChartDocument({
   notes?: string | null;
   startDate?: string | null;
   endDate?: string | null;
+  extraClientInfo?: ExtraClientInfoItem[];
+  footnote?: string | null;
   days: DietDays;
   qrCodes: Record<string, string>;
   branding: OrgBranding;
   className?: string;
 }) {
+  const footnoteText = footnote?.trim() ?? "";
+
   return (
     <article
       className={cn(
@@ -69,6 +76,11 @@ export function DietChartDocument({
               <p>{formatDateRange(startDate, endDate)}</p>
             ) : null}
             {createdByName ? <p>Prepared by {createdByName}</p> : null}
+            {extraClientInfo?.map((item) => (
+              <p key={`${item.key}:${item.value}`}>
+                {item.key}: {item.value.trim() || "-"}
+              </p>
+            ))}
           </div>
           {notes?.trim() ? (
             <p className="mt-3 text-sm text-[#4d6558]">{notes.trim()}</p>
@@ -146,6 +158,12 @@ export function DietChartDocument({
             </section>
           ))}
         </div>
+
+        {footnoteText ? (
+          <footer className="mt-8 border-t border-[#d7e6dc] pt-3 text-xs leading-relaxed text-[#4d6558]">
+            {footnoteText}
+          </footer>
+        ) : null}
       </div>
     </article>
   );
