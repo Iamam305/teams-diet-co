@@ -1,12 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
-import { AuthCard } from "@/components/auth/auth-card";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -19,14 +17,7 @@ import { authClient } from "@/lib/auth-client";
 import { getAuthErrorMessage } from "@/lib/auth-errors";
 import { changePasswordSchema } from "@/lib/validations";
 
-export function ChangePasswordForm({
-  required,
-  embedded,
-}: {
-  required?: boolean;
-  embedded?: boolean;
-}) {
-  const router = useRouter();
+export function ChangePasswordForm() {
   const [pending, setPending] = useState(false);
   const form = useForm<z.infer<typeof changePasswordSchema>>({
     resolver: zodResolver(changePasswordSchema),
@@ -52,17 +43,10 @@ export function ChangePasswordForm({
     }
 
     toast.success("Password updated.");
-    if (required) {
-      await authClient.getSession({ query: { disableCookieCache: true } });
-      router.replace("/continue");
-    }
   }
 
-  const formBody = (
-    <form
-      onSubmit={form.handleSubmit(onSubmit)}
-      className={embedded ? "max-w-lg" : undefined}
-    >
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)} className="max-w-lg">
       <FieldGroup>
         <Field data-invalid={Boolean(form.formState.errors.currentPassword)}>
           <FieldLabel htmlFor="currentPassword">Current password</FieldLabel>
@@ -98,31 +82,10 @@ export function ChangePasswordForm({
             {form.formState.errors.confirmPassword?.message}
           </FieldError>
         </Field>
-        <Button
-          type="submit"
-          loading={pending}
-          className={embedded ? undefined : "w-full"}
-        >
+        <Button type="submit" loading={pending}>
           Save password
         </Button>
       </FieldGroup>
     </form>
-  );
-
-  if (embedded) {
-    return formBody;
-  }
-
-  return (
-    <AuthCard
-      title={required ? "Change your temporary password" : "Change password"}
-      description={
-        required
-          ? "You signed in with a temporary password. Choose a new one before continuing."
-          : "Update the password you use to sign in."
-      }
-    >
-      {formBody}
-    </AuthCard>
   );
 }

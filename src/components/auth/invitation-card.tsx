@@ -35,11 +35,6 @@ export function InvitationCard({
   const pending = acceptInvitation.isPending || rejectInvitation.isPending;
 
   function handleInviteError(error: unknown) {
-    if (isApiRequestError(error) && error.code === "PASSWORD_CHANGE_REQUIRED") {
-      router.replace("/change-password");
-      return;
-    }
-
     toast.error(
       isApiRequestError(error) ? error.message : "Could not update invitation.",
     );

@@ -148,23 +148,11 @@ describe("team access", () => {
   });
 });
 
-describe("forced password-change gate", () => {
-  it("sends provisioned users to change-password before invites or the app", () => {
+describe("post-auth destination", () => {
+  it("sends pending invites before onboarding or the app", () => {
     expect(
       postAuthDestination({
         emailVerified: true,
-        mustChangePassword: true,
-        hasOrganization: false,
-        pendingInviteId: "inv_1",
-      }),
-    ).toBe("/change-password");
-  });
-
-  it("sends pending invites after the password is ready", () => {
-    expect(
-      postAuthDestination({
-        emailVerified: true,
-        mustChangePassword: false,
         hasOrganization: false,
         pendingInviteId: "inv_1",
       }),
@@ -175,7 +163,6 @@ describe("forced password-change gate", () => {
     expect(
       postAuthDestination({
         emailVerified: true,
-        mustChangePassword: false,
         hasOrganization: true,
       }),
     ).toBe("/dashboard");
@@ -185,7 +172,6 @@ describe("forced password-change gate", () => {
     expect(
       postAuthDestination({
         emailVerified: true,
-        mustChangePassword: false,
         hasOrganization: true,
         homePath: "/diet-charts",
       }),

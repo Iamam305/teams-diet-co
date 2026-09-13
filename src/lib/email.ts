@@ -122,14 +122,14 @@ export function invitationCredentialsEmailHtml({
     `
       <p>You have been invited to join <strong>${escapeHtml(organizationName)}</strong>.</p>
       ${teamLine}
-      <p>Use these temporary credentials to sign in. You must change this password after your first login.</p>
+      <p>Use these temporary credentials to sign in. You can change this password later from Settings.</p>
       <ul>
         <li>Email: <strong>${escapeHtml(email)}</strong></li>
         <li>Username: <strong>${escapeHtml(username)}</strong></li>
         <li>Temporary password: <strong>${escapeHtml(password)}</strong></li>
       </ul>
       <p><a href="${escapeHtml(loginUrl)}">Sign in</a></p>
-      <p>After you change your password, accept the invitation: <a href="${escapeHtml(inviteUrl)}">Accept invitation</a></p>
+      <p>Then accept the invitation: <a href="${escapeHtml(inviteUrl)}">Accept invitation</a></p>
       <p>This invitation expires ${escapeHtml(expiresLabel)}.</p>
     `,
   );

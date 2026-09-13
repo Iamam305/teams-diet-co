@@ -36,6 +36,13 @@
       "when": 1789293522176,
       "tag": "0004_known_purple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1789294308264,
+      "tag": "0005_productive_maximus",
+      "breakpoints": true
     }
   ]
 }

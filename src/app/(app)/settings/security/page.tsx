@@ -10,7 +10,7 @@ export default function SecuritySettingsPage() {
         title="Security"
         description="Change the password you use to sign in."
       />
-      <ChangePasswordForm embedded />
+      <ChangePasswordForm />
     </div>
   );
 }

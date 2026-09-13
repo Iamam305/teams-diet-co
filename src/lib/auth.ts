@@ -1,10 +1,8 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
-import { APIError, createAuthMiddleware } from "better-auth/api";
-import { setSessionCookie } from "better-auth/cookies";
+import { APIError } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { organization, username } from "better-auth/plugins";
-import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import {
@@ -53,12 +51,6 @@ export const auth = betterAuth({
         html: resetPasswordEmailHtml(url),
       });
     },
-    onPasswordReset: async ({ user }) => {
-      await db
-        .update(schema.user)
-        .set({ mustChangePassword: false })
-        .where(eq(schema.user.id, user.id));
-    },
   },
   emailVerification: {
     sendOnSignUp: true,
@@ -77,16 +69,6 @@ export const auth = betterAuth({
     cookieCache: {
       enabled: true,
       maxAge: 60 * 5,
-    },
-  },
-  user: {
-    additionalFields: {
-      mustChangePassword: {
-        type: "boolean",
-        required: false,
-        defaultValue: false,
-        input: false,
-      },
     },
   },
   databaseHooks: {
@@ -108,32 +90,6 @@ export const auth = betterAuth({
         },
       },
     },
-  },
-  hooks: {
-    after: createAuthMiddleware(async (ctx) => {
-      if (ctx.path !== "/change-password" && ctx.path !== "/reset-password") {
-        return;
-      }
-
-      const activeSession = ctx.context.newSession ?? ctx.context.session;
-      const userId = activeSession?.user.id;
-
-      if (!userId) {
-        return;
-      }
-
-      await ctx.context.internalAdapter.updateUser(userId, {
-        mustChangePassword: false,
-      });
-
-      await setSessionCookie(ctx, {
-        session: activeSession.session,
-        user: {
-          ...activeSession.user,
-          mustChangePassword: false,
-        } as typeof activeSession.user,
-      });
-    }),
   },
   plugins: [
     username(),

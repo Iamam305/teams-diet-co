@@ -63,11 +63,6 @@ export function useAuthGate() {
       return;
     }
 
-    if (query.error.code === "PASSWORD_CHANGE_REQUIRED") {
-      router.replace("/change-password");
-      return;
-    }
-
     if (query.error.code === "NO_ORGANIZATION") {
       router.replace("/onboarding");
     }

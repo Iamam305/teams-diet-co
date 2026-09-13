@@ -1,7 +1,6 @@
 export type ApiErrorCode =
   | "UNAUTHENTICATED"
   | "EMAIL_UNVERIFIED"
-  | "PASSWORD_CHANGE_REQUIRED"
   | "NO_ORGANIZATION"
   | "FORBIDDEN"
   | "NOT_FOUND";

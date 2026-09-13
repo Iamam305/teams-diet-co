@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import type { OrgRole } from "@/lib/roles";
-import { requireApiPasswordReady, requirePermission } from "@/server/auth";
+import { requireApiVerifiedEmail, requirePermission } from "@/server/auth";
 import { inviteMemberWithCredentials } from "@/server/invite";
 
 export async function inviteMemberAction(input: {
@@ -23,7 +23,7 @@ export async function cancelInvitationAction(invitationId: string) {
 }
 
 export async function acceptInvitationAction(invitationId: string) {
-  await requireApiPasswordReady();
+  await requireApiVerifiedEmail();
   const result = await auth.api.acceptInvitation({
     headers: await headers(),
     body: { invitationId },
@@ -32,7 +32,7 @@ export async function acceptInvitationAction(invitationId: string) {
 }
 
 export async function rejectInvitationAction(invitationId: string) {
-  await requireApiPasswordReady();
+  await requireApiVerifiedEmail();
   await auth.api.rejectInvitation({
     headers: await headers(),
     body: { invitationId },

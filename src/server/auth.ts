@@ -1,8 +1,12 @@
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { db } from "@/db";
-import { user } from "@/db/schema";
+import {
+  member as memberTable,
+  organization as organizationTable,
+} from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { canAccessTeam, type TeamAccessAction } from "@/lib/auth-gates";
 import { isMainAdmin, isTeamAdmin, type OrgRole } from "@/lib/roles";
@@ -11,11 +15,31 @@ import { listTeamIdsForUser } from "@/server/org-hooks";
 
 export type AppSession = NonNullable<Awaited<ReturnType<typeof getSession>>>;
 
-export async function getSession() {
+export type AppOrganization = {
+  id: string;
+  name: string;
+  slug: string;
+  logo: string | null;
+  metadata: string | null;
+};
+
+export type AppMember = {
+  id: string;
+  userId: string;
+  role: string;
+};
+
+export type OrganizationContext = {
+  session: AppSession;
+  member: AppMember;
+  organization: AppOrganization;
+};
+
+export const getSession = cache(async () => {
   return auth.api.getSession({
     headers: await headers(),
   });
-}
+});
 
 function redirectFromApiError(error: unknown): never {
   if (error instanceof ApiError) {
@@ -24,9 +48,6 @@ function redirectFromApiError(error: unknown): never {
     }
     if (error.code === "EMAIL_UNVERIFIED") {
       redirect("/verify-email");
-    }
-    if (error.code === "PASSWORD_CHANGE_REQUIRED") {
-      redirect("/change-password");
     }
     if (error.code === "NO_ORGANIZATION") {
       redirect("/onboarding");
@@ -76,98 +97,83 @@ export async function requireVerifiedEmail() {
   }
 }
 
-export async function userMustChangePassword(userId: string) {
-  const [row] = await db
-    .select({ mustChangePassword: user.mustChangePassword })
-    .from(user)
-    .where(eq(user.id, userId))
-    .limit(1);
-
-  return Boolean(row?.mustChangePassword);
-}
-
-export async function requireApiPasswordReady() {
-  const session = await requireApiVerifiedEmail();
-
-  if (await userMustChangePassword(session.user.id)) {
-    throw new ApiError(
-      403,
-      "Change your password to continue.",
-      "PASSWORD_CHANGE_REQUIRED",
-    );
-  }
-
-  return session;
-}
-
-export async function requirePasswordReady() {
-  try {
-    return await requireApiPasswordReady();
-  } catch (error) {
-    redirectFromApiError(error);
-  }
-}
-
 export async function getOrganizations() {
   return auth.api.listOrganizations({
     headers: await headers(),
   });
 }
 
-export async function requireApiOrganization() {
-  const session = await requireApiPasswordReady();
-  const organizations = await getOrganizations();
+async function loadMemberships(userId: string) {
+  return db
+    .select({
+      memberId: memberTable.id,
+      userId: memberTable.userId,
+      role: memberTable.role,
+      organizationId: organizationTable.id,
+      name: organizationTable.name,
+      slug: organizationTable.slug,
+      logo: organizationTable.logo,
+      metadata: organizationTable.metadata,
+    })
+    .from(memberTable)
+    .innerJoin(
+      organizationTable,
+      eq(organizationTable.id, memberTable.organizationId),
+    )
+    .where(eq(memberTable.userId, userId));
+}
+
+function toOrganizationContext(
+  session: AppSession,
+  row: Awaited<ReturnType<typeof loadMemberships>>[number],
+): OrganizationContext {
+  return {
+    session,
+    member: {
+      id: row.memberId,
+      userId: row.userId,
+      role: row.role,
+    },
+    organization: {
+      id: row.organizationId,
+      name: row.name,
+      slug: row.slug,
+      logo: row.logo,
+      metadata: row.metadata,
+    },
+  };
+}
+
+async function resolveOrganizationContext(): Promise<OrganizationContext> {
+  const session = await requireApiVerifiedEmail();
+  const memberships = await loadMemberships(session.user.id);
+
+  if (!memberships.length) {
+    throw new ApiError(
+      403,
+      "Create or join an organization.",
+      "NO_ORGANIZATION",
+    );
+  }
+
   const activeOrganizationId = (
     session.session as { activeOrganizationId?: string | null }
   ).activeOrganizationId;
+  const active =
+    memberships.find((row) => row.organizationId === activeOrganizationId) ??
+    memberships[0];
 
-  if (!organizations?.length) {
-    throw new ApiError(
-      403,
-      "Create or join an organization.",
-      "NO_ORGANIZATION",
-    );
-  }
-
-  const organizationId =
-    activeOrganizationId &&
-    organizations.some(
-      (organization) => organization.id === activeOrganizationId,
-    )
-      ? activeOrganizationId
-      : organizations[0].id;
-
-  if (organizationId !== activeOrganizationId) {
+  if (active.organizationId !== activeOrganizationId) {
     await auth.api.setActiveOrganization({
       headers: await headers(),
-      body: { organizationId },
+      body: { organizationId: active.organizationId },
     });
   }
 
-  const fullOrganization = await auth.api.getFullOrganization({
-    headers: await headers(),
-    query: { organizationId },
-  });
-
-  const member = fullOrganization?.members.find(
-    (item) => item.userId === session.user.id,
-  );
-
-  if (!member || !fullOrganization) {
-    throw new ApiError(
-      403,
-      "Create or join an organization.",
-      "NO_ORGANIZATION",
-    );
-  }
-
-  return {
-    session,
-    member,
-    organization: fullOrganization,
-    organizations,
-  };
+  return toOrganizationContext(session, active);
 }
+
+export const requireApiOrganization = cache(resolveOrganizationContext);
 
 export async function requireOrganization() {
   try {

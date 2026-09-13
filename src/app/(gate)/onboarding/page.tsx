@@ -31,11 +31,6 @@ export default function OnboardingPage() {
 
     if (query.error.code === "EMAIL_UNVERIFIED") {
       router.replace("/verify-email");
-      return;
-    }
-
-    if (query.error.code === "PASSWORD_CHANGE_REQUIRED") {
-      router.replace("/change-password");
     }
   }, [query.error, router]);
 

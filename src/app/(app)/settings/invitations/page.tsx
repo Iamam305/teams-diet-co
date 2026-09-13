@@ -18,7 +18,7 @@ export default function InvitationsSettingsPage() {
       <div>
         <PageHeader
           title="Invitations"
-          description="Invite people with a role and team. New accounts get a temporary password."
+          description="Invite people with a role and team. New accounts get a temporary password they can change later."
         />
         <SettingsTableSkeleton />
       </div>
@@ -29,7 +29,7 @@ export default function InvitationsSettingsPage() {
     <div>
       <PageHeader
         title="Invitations"
-        description="Invite people with a role and team. New accounts get a temporary password."
+        description="Invite people with a role and team. New accounts get a temporary password they can change later."
         actions={
           <InviteDialog
             teams={query.data.teams}

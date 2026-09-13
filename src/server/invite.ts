@@ -114,7 +114,6 @@ export async function inviteMemberWithCredentials(input: {
         emailVerified: true,
         username,
         displayUsername: username,
-        mustChangePassword: true,
       },
       { method: "email-password" },
     );

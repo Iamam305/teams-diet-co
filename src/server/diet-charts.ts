@@ -1,5 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
+import { cache } from "react";
 import { db } from "@/db";
 import { dietChart, user } from "@/db/schema";
 import { canViewDietChart } from "@/lib/diet-access";
@@ -13,8 +14,8 @@ import {
 } from "@/lib/diet-chart";
 import { isMainAdmin, isTeamAdmin } from "@/lib/roles";
 import {
-  type ExtraClientInfoItem,
   dietChartMetaSchema,
+  type ExtraClientInfoItem,
   normalizeExtraClientInfo,
   parseExtraClientInfoJson,
   stringifyExtraClientInfo,
@@ -72,7 +73,7 @@ function copyTitle(title: string) {
   return `${base}${suffix}`.slice(0, 120);
 }
 
-async function getChartAccessContext() {
+const getChartAccessContext = cache(async () => {
   const context = await requireApiOrganization();
   const memberTeamIds = await listTeamIdsForUser(
     context.session.user.id,
@@ -80,7 +81,7 @@ async function getChartAccessContext() {
   );
 
   return { ...context, memberTeamIds };
-}
+});
 
 export async function listDietCharts(): Promise<DietChartListItem[]> {
   const { session, member, organization, memberTeamIds } =
@@ -286,7 +287,7 @@ export async function updateDietChartAction(
 
   const meta = parseWriteMeta(input);
   const days = dietDaysSchema.parse(input.days);
-  const { session, organization } = await requireApiOrganization();
+  const { session, organization } = await getChartAccessContext();
   const now = new Date();
 
   await db

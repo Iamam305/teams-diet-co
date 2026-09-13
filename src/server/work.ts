@@ -1,6 +1,12 @@
 import { and, desc, eq, gte, inArray, isNull, lt, or } from "drizzle-orm";
 import { db } from "@/db";
-import { team, teamMember, user, workSession } from "@/db/schema";
+import {
+  member as memberTable,
+  team,
+  teamMember,
+  user,
+  workSession,
+} from "@/db/schema";
 import {
   buildAttendanceLog,
   hoursInRangeMs,
@@ -63,17 +69,29 @@ async function getVisiblePeople() {
     };
   }
 
-  const memberships = await db
-    .select({
-      userId: teamMember.userId,
-      teamId: teamMember.teamId,
-      teamName: team.name,
-    })
-    .from(teamMember)
-    .innerJoin(team, eq(team.id, teamMember.teamId))
-    .where(eq(team.organizationId, organization.id));
+  const [memberships, orgMembers] = await Promise.all([
+    db
+      .select({
+        userId: teamMember.userId,
+        teamId: teamMember.teamId,
+        teamName: team.name,
+      })
+      .from(teamMember)
+      .innerJoin(team, eq(team.id, teamMember.teamId))
+      .where(eq(team.organizationId, organization.id)),
+    db
+      .select({
+        userId: memberTable.userId,
+        role: memberTable.role,
+        name: user.name,
+        email: user.email,
+      })
+      .from(memberTable)
+      .innerJoin(user, eq(user.id, memberTable.userId))
+      .where(eq(memberTable.organizationId, organization.id)),
+  ]);
 
-  let visibleMembers = organization.members;
+  let visibleMembers = orgMembers;
   let visibleMemberships = memberships;
 
   if (!isMainAdmin(member.role)) {
@@ -83,9 +101,7 @@ async function getVisiblePeople() {
     );
     const allowed = new Set(await listUserIdsOnTeams(memberTeamIds));
     allowed.add(session.user.id);
-    visibleMembers = organization.members.filter((item) =>
-      allowed.has(item.userId),
-    );
+    visibleMembers = orgMembers.filter((item) => allowed.has(item.userId));
     visibleMemberships = memberships.filter((item) =>
       memberTeamIds.includes(item.teamId),
     );
@@ -93,8 +109,8 @@ async function getVisiblePeople() {
 
   const people = visibleMembers.map((item) => ({
     userId: item.userId,
-    name: item.user?.name ?? "User",
-    email: item.user?.email ?? "",
+    name: item.name ?? "User",
+    email: item.email ?? "",
     role: item.role,
     teamNames: visibleMemberships
       .filter((membership) => membership.userId === item.userId)
@@ -200,15 +216,17 @@ function toRosterPerson(
   };
 }
 
-export async function getActiveWorkSession(userId?: string) {
-  const { session, organization } = await requireApiOrganization();
+export async function getActiveWorkSession(
+  organizationId: string,
+  userId: string,
+) {
   const [row] = await db
     .select()
     .from(workSession)
     .where(
       and(
-        eq(workSession.organizationId, organization.id),
-        eq(workSession.userId, userId ?? session.user.id),
+        eq(workSession.organizationId, organizationId),
+        eq(workSession.userId, userId),
         isNull(workSession.endedAt),
       ),
     )
@@ -219,7 +237,7 @@ export async function getActiveWorkSession(userId?: string) {
 
 export async function startWorkAction() {
   const { session, organization } = await requireApiOrganization();
-  const existing = await getActiveWorkSession(session.user.id);
+  const existing = await getActiveWorkSession(organization.id, session.user.id);
 
   if (existing) {
     return { startedAt: existing.startedAt.toISOString() };

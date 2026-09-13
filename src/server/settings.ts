@@ -1,11 +1,17 @@
-import { headers } from "next/headers";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { teamMember } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import {
+  invitation,
+  member as memberTable,
+  team,
+  teamMember,
+  user,
+} from "@/db/schema";
 import { parseOrgBranding } from "@/lib/org-branding";
 import { canAccessSettings, isMainAdmin } from "@/lib/roles";
 import { ApiError } from "@/server/api-error";
 import { requireApiOrganization } from "@/server/auth";
+import { listTeamIdsForUser } from "@/server/org-hooks";
 import { getActiveWorkSession } from "@/server/work";
 
 function forbidIfCannotAccess(
@@ -21,9 +27,36 @@ function forbidIfCannotAccess(
   }
 }
 
+async function listOrganizationTeams(organizationId: string) {
+  return db
+    .select({ id: team.id, name: team.name })
+    .from(team)
+    .where(eq(team.organizationId, organizationId));
+}
+
+async function visibleTeamIdsForActor(
+  role: string,
+  userId: string,
+  organizationId: string,
+) {
+  if (isMainAdmin(role)) {
+    const teams = await listOrganizationTeams(organizationId);
+    return { teams, visibleTeamIds: new Set(teams.map((item) => item.id)) };
+  }
+
+  const memberTeamIds = await listTeamIdsForUser(userId, organizationId);
+  const teams = (await listOrganizationTeams(organizationId)).filter((item) =>
+    memberTeamIds.includes(item.id),
+  );
+  return { teams, visibleTeamIds: new Set(memberTeamIds) };
+}
+
 export async function getMePayload() {
   const { session, member, organization } = await requireApiOrganization();
-  const workSession = await getActiveWorkSession(session.user.id);
+  const workSession = await getActiveWorkSession(
+    organization.id,
+    session.user.id,
+  );
   const branding = parseOrgBranding(organization);
 
   return {
@@ -50,16 +83,33 @@ export async function getSettingsMembers() {
   const { organization, member, session } = await requireApiOrganization();
   forbidIfCannotAccess(member.role, "members");
 
-  const teamMemberships = await db.select().from(teamMember);
-  const userTeams = isMainAdmin(member.role)
-    ? (organization.teams ?? [])
-    : ((await auth.api.listUserTeams({
-        headers: await headers(),
-      })) ?? []);
-  const visibleTeamIds = new Set(userTeams.map((team) => team.id));
+  const { teams, visibleTeamIds } = await visibleTeamIdsForActor(
+    member.role,
+    session.user.id,
+    organization.id,
+  );
+  const teamMemberships = await db
+    .select({
+      teamId: teamMember.teamId,
+      userId: teamMember.userId,
+    })
+    .from(teamMember)
+    .innerJoin(team, eq(team.id, teamMember.teamId))
+    .where(eq(team.organizationId, organization.id));
+  const orgMembers = await db
+    .select({
+      id: memberTable.id,
+      userId: memberTable.userId,
+      role: memberTable.role,
+      name: user.name,
+      email: user.email,
+    })
+    .from(memberTable)
+    .innerJoin(user, eq(user.id, memberTable.userId))
+    .where(eq(memberTable.organizationId, organization.id));
   const visibleMembers = isMainAdmin(member.role)
-    ? organization.members
-    : organization.members.filter((item) =>
+    ? orgMembers
+    : orgMembers.filter((item) =>
         teamMemberships.some(
           (membership) =>
             membership.userId === item.userId &&
@@ -75,11 +125,11 @@ export async function getSettingsMembers() {
       userId: item.userId,
       role: item.role,
       user: {
-        name: item.user?.name,
-        email: item.user?.email,
+        name: item.name,
+        email: item.email,
       },
     })),
-    teams: userTeams.map((team) => ({ id: team.id, name: team.name })),
+    teams,
     teamMembers: teamMemberships
       .filter((item) => visibleTeamIds.has(item.teamId))
       .map((item) => ({ teamId: item.teamId, userId: item.userId })),
@@ -87,43 +137,50 @@ export async function getSettingsMembers() {
 }
 
 export async function getSettingsTeams() {
-  const { member, organization } = await requireApiOrganization();
+  const { member, organization, session } = await requireApiOrganization();
   forbidIfCannotAccess(member.role, "teams");
 
-  const userTeams = isMainAdmin(member.role)
-    ? (organization.teams ?? [])
-    : ((await auth.api.listUserTeams({
-        headers: await headers(),
-      })) ?? []);
+  const { teams } = await visibleTeamIdsForActor(
+    member.role,
+    session.user.id,
+    organization.id,
+  );
 
   return {
     role: member.role,
-    teams: userTeams.map((team) => ({ id: team.id, name: team.name })),
+    teams,
   };
 }
 
 export async function getSettingsInvitations() {
-  const { organization, member } = await requireApiOrganization();
+  const { organization, member, session } = await requireApiOrganization();
   forbidIfCannotAccess(member.role, "invitations");
 
-  const teams = isMainAdmin(member.role)
-    ? (organization.teams ?? [])
-    : ((await auth.api.listUserTeams({
-        headers: await headers(),
-      })) ?? []);
+  const { teams } = await visibleTeamIdsForActor(
+    member.role,
+    session.user.id,
+    organization.id,
+  );
+  const invitations = await db
+    .select({
+      id: invitation.id,
+      email: invitation.email,
+      role: invitation.role,
+      status: invitation.status,
+      expiresAt: invitation.expiresAt,
+    })
+    .from(invitation)
+    .where(eq(invitation.organizationId, organization.id));
 
   return {
     actorRole: member.role,
-    teams: teams.map((team) => ({ id: team.id, name: team.name })),
-    invitations: (organization.invitations ?? []).map((invitation) => ({
-      id: invitation.id,
-      email: invitation.email,
-      role: invitation.role ?? "member",
-      status: invitation.status,
-      expiresAt:
-        invitation.expiresAt instanceof Date
-          ? invitation.expiresAt.toISOString()
-          : String(invitation.expiresAt),
+    teams,
+    invitations: invitations.map((item) => ({
+      id: item.id,
+      email: item.email,
+      role: item.role ?? "member",
+      status: item.status,
+      expiresAt: item.expiresAt.toISOString(),
     })),
   };
 }
@@ -131,19 +188,6 @@ export async function getSettingsInvitations() {
 export async function getSettingsOrganization() {
   const { organization, member } = await requireApiOrganization();
   forbidIfCannotAccess(member.role, "organization");
-
-  const allowed = await auth.api.hasPermission({
-    headers: await headers(),
-    body: { permissions: { organization: ["update"] } },
-  });
-
-  if (!allowed?.success) {
-    throw new ApiError(
-      403,
-      "You do not have permission to do that.",
-      "FORBIDDEN",
-    );
-  }
 
   return {
     organization: {

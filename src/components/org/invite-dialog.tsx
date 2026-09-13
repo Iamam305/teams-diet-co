@@ -77,7 +77,7 @@ export function InviteDialog({
         open={open}
         onOpenChange={setOpen}
         title="Invite a teammate"
-        description="New users receive a temporary password and must change it after their first login."
+        description="New users receive a temporary password they can change later from Settings."
       >
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <FieldGroup>

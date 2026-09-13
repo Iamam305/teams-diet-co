@@ -5,7 +5,6 @@ import {
   getOrganizations,
   requireOrganization,
   requireSession,
-  userMustChangePassword,
 } from "@/server/auth";
 import { listCurrentUserInvitations } from "@/server/invitations";
 
@@ -19,16 +18,10 @@ export default async function ContinuePage() {
         (invitation) => invitation.status === "pending",
       )
     : null;
-  const mustChangePassword = await userMustChangePassword(session.user.id);
   const hasOrganization = Boolean(organizations?.length);
   let homePath = "/diet-charts";
 
-  if (
-    session.user.emailVerified &&
-    !mustChangePassword &&
-    hasOrganization &&
-    !pendingInvite
-  ) {
+  if (session.user.emailVerified && hasOrganization && !pendingInvite) {
     const { member } = await requireOrganization();
     homePath = homePathForRole(member.role);
   }
@@ -36,7 +29,6 @@ export default async function ContinuePage() {
   redirect(
     postAuthDestination({
       emailVerified: Boolean(session.user.emailVerified),
-      mustChangePassword,
       hasOrganization,
       pendingInviteId: pendingInvite?.id,
       homePath,

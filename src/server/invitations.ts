@@ -5,7 +5,7 @@ import { invitation, organization } from "@/db/schema";
 import type { PublicInvitationResponse } from "@/lib/api-types";
 import { auth } from "@/lib/auth";
 import { invitationDisplayStatus } from "@/lib/auth-gates";
-import { getSession, requireApiPasswordReady } from "@/server/auth";
+import { getSession, requireApiVerifiedEmail } from "@/server/auth";
 
 export async function listCurrentUserInvitations() {
   const session = await getSession();
@@ -26,7 +26,7 @@ export async function listCurrentUserInvitations() {
 }
 
 export async function listMineInvitations() {
-  await requireApiPasswordReady();
+  await requireApiVerifiedEmail();
   const invitations = (await listCurrentUserInvitations()).filter(
     (item) => item.status === "pending",
   );
